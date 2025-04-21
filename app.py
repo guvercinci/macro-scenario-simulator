@@ -3,19 +3,21 @@
 import streamlit as st
 import pandas as pd
 
-# Define default allocations
-allocations = [
-    {"symbol": "Stocks", "allocation": 234434},
-    {"symbol": "Treasuries", "allocation": 30000},
-    {"symbol": "Commodities", "allocation": 20000},
-    {"symbol": "Cash", "allocation": 47000},
-    {"symbol": "Gold", "allocation": 10000},
-    {"symbol": "SPY Put Spread", "allocation": 9260}
-]
+st.title("Macro Scenario-Based Portfolio Simulator")
+
+# Editable allocation chart
+st.header("Adjust Portfolio Allocations ($)")
+alloc_df = pd.DataFrame(
+    {
+        "symbol": ["Stocks", "Treasuries", "Commodities", "Cash", "Gold", "SPY Put Spread"],
+        "allocation": [234434, 30000, 20000, 47000, 10000, 9260]
+    }
+)
+editable_allocations = st.data_editor(alloc_df, num_rows="dynamic", use_container_width=True)
 
 # Editable macro scenario returns
 st.header("Edit Scenario Return Assumptions (%)")
-assets = [a["symbol"] for a in allocations]
+assets = list(editable_allocations["symbol"])
 scenario_names = ["Recession", "Stagflation", "Boom", "Deflation"]
 
 # Default values for the return matrix
@@ -45,7 +47,7 @@ if total_prob != 100:
 
 # Run simulation if total probability is valid
 if total_prob == 100:
-    df = pd.DataFrame(allocations)
+    df = editable_allocations.copy()
     df["expected_return"] = 0.0
 
     for scenario, weight in probabilities.items():
