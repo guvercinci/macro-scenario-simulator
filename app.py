@@ -35,23 +35,23 @@ probabilities = {}
 total_prob = 0
 for scenario in editable_returns.columns:
     p = st.slider(f"{scenario} Probability (%)", min_value=0, max_value=100, value=25)
-    probabilities[scenario] = p / 100
+    probabilities[scenario] = p
     total_prob += p
 
-st.write(f"**Total Assigned Probability:** {total_prob * 100:.1f}%")
+st.write(f"**Total Assigned Probability:** {total_prob:.1f}%")
 
-if total_prob != 1.0:
+if total_prob != 100:
     st.warning("Total probabilities must sum to 100% to reflect reality.")
 
 # Run simulation if total probability is valid
-if total_prob == 1.0:
+if total_prob == 100:
     df = pd.DataFrame(allocations)
     df["expected_return"] = 0.0
 
     for scenario, weight in probabilities.items():
         for asset in df["symbol"]:
             scenario_return = editable_returns.loc[asset, scenario]
-            df.loc[df["symbol"] == asset, "expected_return"] += weight * (scenario_return / 100)
+            df.loc[df["symbol"] == asset, "expected_return"] += (weight / 100) * (scenario_return / 100)
 
     df["expected_dollar_return"] = df["allocation"] * df["expected_return"]
     df["final_value"] = df["allocation"] + df["expected_dollar_return"]
