@@ -13,64 +13,44 @@ allocations = [
     {"symbol": "SPY Put Spread", "allocation": 9260}
 ]
 
-# Define macro scenarios with default returns (in %)
-scenarios = {
-    "Recession": {
-        "Stocks": -15,
-        "Treasuries": 5,
-        "Commodities": -5,
-        "Cash": 0,
-        "Gold": 3,
-        "SPY Put Spread": 207
-    },
-    "Stagflation": {
-        "Stocks": -10,
-        "Treasuries": -8,
-        "Commodities": 6,
-        "Cash": 0,
-        "Gold": 10,
-        "SPY Put Spread": 100
-    },
-    "Boom": {
-        "Stocks": 12,
-        "Treasuries": -4,
-        "Commodities": 4,
-        "Cash": 0,
-        "Gold": -2,
-        "SPY Put Spread": -100
-    },
-    "Deflation": {
-        "Stocks": -5,
-        "Treasuries": 10,
-        "Commodities": -10,
-        "Cash": 0,
-        "Gold": 5,
-        "SPY Put Spread": 20
-    }
+# Editable macro scenario returns
+st.header("Edit Scenario Return Assumptions (%)")
+assets = [a["symbol"] for a in allocations]
+scenario_names = ["Recession", "Stagflation", "Boom", "Deflation"]
+
+# Default values for the return matrix
+default_returns = {
+    "Recession": [-15, 5, -5, 0, 3, 207],
+    "Stagflation": [-10, -8, 6, 0, 10, 100],
+    "Boom": [12, -4, 4, 0, -2, -100],
+    "Deflation": [-5, 10, -10, 0, 5, 20]
 }
 
-# Streamlit UI
-st.title("Macro Scenario-Based Portfolio Simulator")
+scenario_df = pd.DataFrame(default_returns, index=assets)
+editable_returns = st.data_editor(scenario_df, use_container_width=True)
 
+# Scenario probabilities
 st.header("Enter Scenario Probabilities")
 probabilities = {}
 total_prob = 0
-for scenario in scenarios.keys():
+for scenario in editable_returns.columns:
     p = st.slider(f"{scenario} Probability (%)", min_value=0, max_value=100, value=25)
     probabilities[scenario] = p / 100
     total_prob += p
 
-if total_prob != 100:
+st.write(f"**Total Assigned Probability:** {total_prob * 100:.1f}%")
+
+if total_prob != 1.0:
     st.warning("Total probabilities must sum to 100% to reflect reality.")
 
 # Run simulation if total probability is valid
-if total_prob == 100:
+if total_prob == 1.0:
     df = pd.DataFrame(allocations)
     df["expected_return"] = 0.0
 
     for scenario, weight in probabilities.items():
         for asset in df["symbol"]:
-            scenario_return = scenarios[scenario].get(asset, 0)
+            scenario_return = editable_returns.loc[asset, scenario]
             df.loc[df["symbol"] == asset, "expected_return"] += weight * (scenario_return / 100)
 
     df["expected_dollar_return"] = df["allocation"] * df["expected_return"]
@@ -84,5 +64,5 @@ if total_prob == 100:
     st.metric("Expected Portfolio Return", f"{portfolio_expected_return:.2%}")
     st.metric("Expected Final Portfolio Value", f"$ {portfolio_final_value:,.0f}")
 
-    st.subheader("Scenario Impact Summary")
-    st.write(pd.DataFrame(scenarios))
+    st.subheader("Scenario Impact Matrix")
+    st.dataframe(editable_returns.style.format("{:.1f}%"))
