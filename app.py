@@ -15,31 +15,37 @@ alloc_df = pd.DataFrame(
 )
 editable_allocations = st.data_editor(alloc_df, num_rows="dynamic", use_container_width=True)
 
-# Scenario inputs based on macro variables
-st.header("Enter Scenario Macroeconomic Assumptions")
-scenario_names = ["Recession", "Stagflation", "Boom", "Deflation"]
-scenario_inputs = {}
+# Reference values
+reference_prices = {
+    "SPY": 500,
+    "Gold": 2000,
+    "Crude": 80,
+    "10Y": 4.0
+}
 
-for scenario in scenario_names:
-    st.subheader(f"{scenario} Scenario")
-    gdp_growth = st.number_input(f"GDP Growth (%) - {scenario}", value=-2.0 if scenario=="Recession" else 2.0, step=0.1, key=f"gdp_{scenario}")
-    inflation = st.number_input(f"Inflation (%) - {scenario}", value=2.0, step=0.1, key=f"inflation_{scenario}")
-    interest_rate = st.number_input(f"10Y Treasury Yield (%) - {scenario}", value=3.0, step=0.1, key=f"rate_{scenario}")
-    spy_price = st.number_input(f"SPY Price - {scenario}", value=400, step=1, key=f"spy_{scenario}")
-    crude_price = st.number_input(f"Crude Oil Price - {scenario}", value=80, step=1, key=f"crude_{scenario}")
-    gold_price = st.number_input(f"Gold Price - {scenario}", value=2000, step=10, key=f"gold_{scenario}")
+# Assumed PE ratios for SPY per scenario
+pe_ratios = {
+    "Recession": 14,
+    "Stagflation": 15,
+    "Boom": 20,
+    "Deflation": 17
+}
 
-    scenario_inputs[scenario] = {
-        "GDP": gdp_growth,
-        "Inflation": inflation,
-        "10Y": interest_rate,
-        "SPY": spy_price,
-        "Crude": crude_price,
-        "Gold": gold_price
-    }
+# Assumed Gold prices per scenario
+gold_targets = {
+    "Recession": 2200,
+    "Stagflation": 2500,
+    "Boom": 1900,
+    "Deflation": 2100
+}
+
+# Input: User's earnings expectation for SPY
+st.header("Earnings Forecast")
+earnings_input = st.number_input("Expected S&P 500 Earnings per Share", value=200)
 
 # Scenario probabilities
 st.header("Enter Scenario Probabilities")
+scenario_names = ["Recession", "Stagflation", "Boom", "Deflation"]
 probabilities = {}
 total_prob = 0
 for scenario in scenario_names:
@@ -52,34 +58,31 @@ st.write(f"**Total Assigned Probability:** {total_prob:.1f}%")
 if total_prob != 100:
     st.warning("Total probabilities must sum to 100% to reflect reality.")
 
-# Reference values for returns
-reference_prices = {
-    "SPY": 500,
-    "Crude": 80,
-    "10Y": 4.0,
-    "Gold": 2000
-}
-
 # Run simulation
 if total_prob == 100:
     df = editable_allocations.copy()
     df["expected_return"] = 0.0
 
     for scenario, weight in probabilities.items():
+        pe = pe_ratios[scenario]
+        gold_target = gold_targets[scenario]
+        implied_spy_price = earnings_input * pe
+        crude_price = reference_prices["Crude"] * (0.9 if scenario == "Recession" else 1.2 if scenario == "Boom" else 1.0)
+        bond_yield = reference_prices["10Y"] * (1.25 if scenario == "Boom" else 0.75 if scenario == "Recession" else 1.0)
+
         for asset in df["symbol"]:
-            inputs = scenario_inputs[scenario]
             if asset == "Stocks":
-                r = (inputs["SPY"] / reference_prices["SPY"]) - 1
+                r = (implied_spy_price / reference_prices["SPY"]) - 1
             elif asset == "Treasuries":
-                r = (reference_prices["10Y"] - inputs["10Y"]) / reference_prices["10Y"]
+                r = (reference_prices["10Y"] - bond_yield) / reference_prices["10Y"]
             elif asset == "Commodities":
-                crude_return = (inputs["Crude"] / reference_prices["Crude"]) - 1
-                gold_return = (inputs["Gold"] / reference_prices["Gold"]) - 1
+                crude_return = (crude_price / reference_prices["Crude"]) - 1
+                gold_return = (gold_target / reference_prices["Gold"]) - 1
                 r = 0.5 * (crude_return + gold_return)
             elif asset == "Gold":
-                r = (inputs["Gold"] / reference_prices["Gold"]) - 1
+                r = (gold_target / reference_prices["Gold"]) - 1
             elif asset == "SPY Put Spread":
-                r = (reference_prices["SPY"] - inputs["SPY"]) / reference_prices["SPY"] * 3
+                r = (reference_prices["SPY"] - implied_spy_price) / reference_prices["SPY"] * 3
             else:
                 r = 0
 
@@ -96,5 +99,13 @@ if total_prob == 100:
     st.metric("Expected Portfolio Return", f"{portfolio_expected_return:.2%}")
     st.metric("Expected Final Portfolio Value", f"$ {portfolio_final_value:,.0f}")
 
-    st.subheader("Scenario Input Matrix")
-    st.write(pd.DataFrame(scenario_inputs))
+    st.subheader("Scenario Assumptions")
+    assumption_df = pd.DataFrame({
+        "Scenario": scenario_names,
+        "P/E Ratio": [pe_ratios[s] for s in scenario_names],
+        "SPY Price": [earnings_input * pe_ratios[s] for s in scenario_names],
+        "Gold Price": [gold_targets[s] for s in scenario_names],
+        "Crude Oil Price": [reference_prices["Crude"] * (0.9 if s == "Recession" else 1.2 if s == "Boom" else 1.0) for s in scenario_names],
+        "10Y Yield": [reference_prices["10Y"] * (1.25 if s == "Boom" else 0.75 if s == "Recession" else 1.0) for s in scenario_names]
+    })
+    st.dataframe(assumption_df.set_index("Scenario"))
