@@ -17,13 +17,13 @@ editable_allocations = st.data_editor(alloc_df, num_rows="dynamic", use_containe
 
 # Reference values
 reference_prices = {
-    "SPY": 500,
+    "SPX": 4700,
     "Gold": 2000,
     "Crude": 80,
     "10Y": 4.0
 }
 
-# Assumed PE ratios for SPY per scenario
+# Assumed PE ratios for SPX per scenario
 pe_ratios = {
     "Recession": 14,
     "Stagflation": 15,
@@ -39,9 +39,9 @@ gold_targets = {
     "Deflation": 2100
 }
 
-# Input: User's earnings expectation for SPY
+# Input: User's earnings expectation for SPX
 st.header("Earnings Forecast")
-earnings_input = st.number_input("Expected S&P 500 Earnings per Share", value=200)
+earnings_input = st.number_input("Expected S&P 500 Index Earnings (EPS)", value=235)
 
 # Scenario probabilities
 st.header("Enter Scenario Probabilities")
@@ -66,13 +66,13 @@ if total_prob == 100:
     for scenario, weight in probabilities.items():
         pe = pe_ratios[scenario]
         gold_target = gold_targets[scenario]
-        implied_spy_price = earnings_input * pe
+        implied_spx_price = earnings_input * pe
         crude_price = reference_prices["Crude"] * (0.9 if scenario == "Recession" else 1.2 if scenario == "Boom" else 1.0)
         bond_yield = reference_prices["10Y"] * (1.25 if scenario == "Boom" else 0.75 if scenario == "Recession" else 1.0)
 
         for asset in df["symbol"]:
             if asset == "Stocks":
-                r = (implied_spy_price / reference_prices["SPY"]) - 1
+                r = (implied_spx_price / reference_prices["SPX"]) - 1
             elif asset == "Treasuries":
                 r = (reference_prices["10Y"] - bond_yield) / reference_prices["10Y"]
             elif asset == "Commodities":
@@ -82,7 +82,7 @@ if total_prob == 100:
             elif asset == "Gold":
                 r = (gold_target / reference_prices["Gold"]) - 1
             elif asset == "SPY Put Spread":
-                r = (reference_prices["SPY"] - implied_spy_price) / reference_prices["SPY"] * 3
+                r = (reference_prices["SPX"] - implied_spx_price) / reference_prices["SPX"] * 3
             else:
                 r = 0
 
@@ -103,7 +103,7 @@ if total_prob == 100:
     assumption_df = pd.DataFrame({
         "Scenario": scenario_names,
         "P/E Ratio": [pe_ratios[s] for s in scenario_names],
-        "SPY Price": [earnings_input * pe_ratios[s] for s in scenario_names],
+        "SPX Price": [earnings_input * pe_ratios[s] for s in scenario_names],
         "Gold Price": [gold_targets[s] for s in scenario_names],
         "Crude Oil Price": [reference_prices["Crude"] * (0.9 if s == "Recession" else 1.2 if s == "Boom" else 1.0) for s in scenario_names],
         "10Y Yield": [reference_prices["10Y"] * (1.25 if s == "Boom" else 0.75 if s == "Recession" else 1.0) for s in scenario_names]
