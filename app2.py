@@ -141,10 +141,16 @@ def simulate(alloc,ret,cov,sims=3000): return np.random.multivariate_normal(ret,
 
 def portfolio_editor():
     st.subheader("4. Portfolio Allocation")
-    assets=['Equities','Gold','Oil','Bonds','Cash']
-    df=pd.DataFrame({'Asset':assets,'Pct':[40,20,20,15,5]})
-    df=st.data_editor(df,use_container_width=True)
-    if abs(df['Pct'].sum()-100)>0.1: st.error("Must sum 100%.") and st.stop()
+    assets = ['Equities','Gold','Oil','Bonds','Cash']
+    df_init = pd.DataFrame({'Asset': assets, 'Pct': [40,20,20,15,5]})
+    # Use data_editor if available, otherwise fallback
+    if hasattr(st, 'data_editor'):
+        df = st.data_editor(df_init, use_container_width=True)
+    else:
+        df = st.experimental_data_editor(df_init, use_container_width=True)
+    if abs(df['Pct'].sum() - 100) > 0.1:
+        st.error("Portfolio weights must sum to 100%.")
+        st.stop()
     return df, df['Pct'].values/100
 
 # === Main Application ===
@@ -195,7 +201,8 @@ def run():
             "Model":  [weighted_eps*0 + spx, weighted_eps, weighted_pe, gold_price, oil_price, bond_yield]
         }
     )
-    st.table(df_anchors.style.format({"Actual":"{:.2f}","Model":"{:.2f}"}))
+    # Display Actual vs Model anchors as interactive dataframe
+    st.dataframe(df_anchors.style.format({"Actual":"{:.2f}","Model":"{:.2f}"}))({"Actual":"{:.2f}","Model":"{:.2f}"}))
 
     # 7. Portfolio Allocation
     dfp, alloc = portfolio_editor()
