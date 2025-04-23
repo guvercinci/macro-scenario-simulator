@@ -142,6 +142,11 @@ def portfolio_editor():
 
     df = pd.DataFrame(data)
     df = st.data_editor(df, num_rows="fixed", use_container_width=True, key="portfolio_editor")
+    total_pct = df["allocation_pct"].sum()
+    st.markdown(f"**Total Allocation: {total_pct:.1f}%**")
+    if abs(total_pct - 100) > 0.1:
+        st.error("Total portfolio allocation must equal 100%. Please adjust your percentages.")
+        st.stop()
     df["allocation"] = df["allocation_pct"] / 100 * portfolio_size
     df["allocation"] = df["allocation_pct"] / 100 * 100000
     df["beta"] = df["symbol"].apply(lambda x: equity_beta if x == "Equities" else 1.0)
