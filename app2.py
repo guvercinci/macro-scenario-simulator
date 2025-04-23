@@ -1,4 +1,4 @@
-# app.py — Streamlit Macro Scenario-Based Portfolio Simulator (Restored Version)
+# app.py — Streamlit Macro Scenario-Based Portfolio Simulator (Fixed Version)
 
 import streamlit as st
 import pandas as pd
@@ -21,26 +21,49 @@ def macro_conditions():
     allow_override = st.sidebar.checkbox("Override empirical backdrop manually", value=False)
     disabled_inputs = not allow_override
 
+    # default values if not using empirical inputs
+    short_term_rate = 1.5
+    m2_growth = 4.0
+
     if use_empirical:
         st.sidebar.markdown("#### Empirical Inputs for Liquidity")
-        fed_balance_sheet = st.sidebar.number_input("Fed Balance Sheet (% of GDP)", value=35.0, disabled=disabled_inputs)
-        short_term_rate = st.sidebar.number_input("Real Short-Term Rate (%)", value=1.5, disabled=disabled_inputs)
-        m2_growth = st.sidebar.number_input("M2 Growth YoY (%)", value=4.0, disabled=disabled_inputs)
+        fed_balance_sheet = st.sidebar.number_input(
+            "Fed Balance Sheet (% of GDP)", value=35.0, disabled=disabled_inputs
+        )
+        short_term_rate = st.sidebar.number_input(
+            "Real Short-Term Rate (%)", value=1.5, disabled=disabled_inputs
+        )
+        m2_growth = st.sidebar.number_input(
+            "M2 Growth YoY (%)", value=4.0, disabled=disabled_inputs
+        )
 
         st.sidebar.markdown("#### Empirical Inputs for Fiscal Stimulus")
-        deficit = st.sidebar.number_input("Federal Budget Deficit (% of GDP)", value=6.0, disabled=disabled_inputs)
-        gov_spending = st.sidebar.number_input("Gov. Spending (% of GDP)", value=25.0, disabled=disabled_inputs)
-        transfer_payments = st.sidebar.number_input("Net Transfers (% of GDP)", value=10.0, disabled=disabled_inputs)
+        deficit = st.sidebar.number_input(
+            "Federal Budget Deficit (% of GDP)", value=6.0, disabled=disabled_inputs
+        )
+        gov_spending = st.sidebar.number_input(
+            "Gov. Spending (% of GDP)", value=25.0, disabled=disabled_inputs
+        )
+        transfer_payments = st.sidebar.number_input(
+            "Net Transfers (% of GDP)", value=10.0, disabled=disabled_inputs
+        )
 
         st.sidebar.markdown("#### Empirical Inputs for Geopolitical Risk")
-        geo_risk_index = st.sidebar.number_input("Geopolitical Risk Index", value=120.0, disabled=disabled_inputs)
-        vix_index = st.sidebar.number_input("VIX Volatility Index", value=20.0, disabled=disabled_inputs)
-        conflict_events = st.sidebar.number_input("Global Conflict Events (count)", value=30, disabled=disabled_inputs)
+        geo_risk_index = st.sidebar.number_input(
+            "Geopolitical Risk Index", value=120.0, disabled=disabled_inputs
+        )
+        vix_index = st.sidebar.number_input(
+            "VIX Volatility Index", value=20.0, disabled=disabled_inputs
+        )
+        conflict_events = st.sidebar.number_input(
+            "Global Conflict Events (count)", value=30, disabled=disabled_inputs
+        )
 
+        # compute normalized components
         liquidity_components = [
             (fed_balance_sheet - 15) / (45 - 15),
             max(min((5 - short_term_rate) / 5, 1), 0),
-            max(min((m2_growth - 0) / (15 - 0), 1), 0)
+            max(min((m2_growth - 0) / 15, 1), 0)
         ]
         liq = sum(liquidity_components) / len(liquidity_components)
 
@@ -49,20 +72,25 @@ def macro_conditions():
             (gov_spending - 15) / (35 - 15),
             (transfer_payments - 5) / (20 - 5)
         ]
-        fiscal = sum([min(max(c, 0), 1) for c in fiscal_components]) / len(fiscal_components)
+        fiscal = sum(min(max(c, 0), 1) for c in fiscal_components) / len(fiscal_components)
 
         geo_components = [
             (geo_risk_index - 50) / (200 - 50),
             (vix_index - 10) / (50 - 10),
             (conflict_events - 10) / (60 - 10)
         ]
-        geo = sum([min(max(c, 0), 1) for c in geo_components]) / len(geo_components)
+        geo = sum(min(max(c, 0), 1) for c in geo_components) / len(geo_components)
 
         st.sidebar.markdown("#### Derived Macro Backdrop (0 to 1 scale)")
-        liq = st.sidebar.slider("Liquidity", 0.0, 1.0, liq, disabled=not allow_override)
-        fiscal = st.sidebar.slider("Fiscal Stimulus", 0.0, 1.0, fiscal, disabled=not allow_override)
-        geo = st.sidebar.slider("Geopolitical Risk", 0.0, 1.0, geo, disabled=not allow_override)
-
+        liq = st.sidebar.slider(
+            "Liquidity", 0.0, 1.0, liq, disabled=not allow_override
+        )
+        fiscal = st.sidebar.slider(
+            "Fiscal Stimulus", 0.0, 1.0, fiscal, disabled=not allow_override
+        )
+        geo = st.sidebar.slider(
+            "Geopolitical Risk", 0.0, 1.0, geo, disabled=not allow_override
+        )
     else:
         liq = st.sidebar.slider("Liquidity", 0.0, 1.0, 0.5)
         fiscal = st.sidebar.slider("Fiscal Stimulus", 0.0, 1.0, 0.3)
@@ -75,11 +103,11 @@ def pe_from_real_rate(real_rate, equity_risk_premium=0.04):
     return min(40, max(8, 1 / required_return))
 
 def default_scenarios(short_rate):
-    # These P/Es now reference required return logic instead of static values
-        "Recession": {"pe": pe_from_real_rate(2.5), "eps_change": -0.20},
+    return {
+        "Recession":   {"pe": pe_from_real_rate(2.5), "eps_change": -0.20},
         "Stagflation": {"pe": pe_from_real_rate(2.8), "eps_change": -0.10},
-        "Boom": {"pe": pe_from_real_rate(1.0), "eps_change": 0.15},
-        "Deflation": {"pe": pe_from_real_rate(1.8), "eps_change": -0.05},
+        "Boom":        {"pe": pe_from_real_rate(1.0), "eps_change":  0.15},
+        "Deflation":   {"pe": pe_from_real_rate(1.8), "eps_change": -0.05},
     }
 
 def macro_multiplier(liq, fiscal, geo):
@@ -125,10 +153,10 @@ def portfolio_editor():
     preset = st.selectbox("Portfolio Preset", ["Balanced", "Aggressive", "Defensive", "Custom"], index=0)
 
     presets = {
-        "Balanced": [60, 30, 5, 3, 2, 0],
+        "Balanced":   [60, 30, 5, 3, 2, 0],
         "Aggressive": [80, 10, 2, 5, 2, 1],
-        "Defensive": [30, 30, 10, 10, 10, 10],
-        "Custom": [50, 30, 10, 5, 3, 2]
+        "Defensive":  [30, 30, 10, 10, 10, 10],
+        "Custom":     [50, 30, 10, 5, 3, 2]
     }
     names = ["Equities", "Fixed Income", "Cash", "Commodities", "Gold", "Hedging Instruments"]
     df = pd.DataFrame({"symbol": names, "allocation_pct": presets[preset]})
@@ -157,7 +185,9 @@ def run():
     targets = macro_targets(liq, fiscal, geo, short_rate, m2)
     scenarios = default_scenarios(short_rate)
     probs = scenario_probabilities()
-    weighted_eps, weighted_pe, macro_mult, fair_spx = calculate_fair_value(eps, scenarios, probs, liq, fiscal, geo)
+    weighted_eps, weighted_pe, macro_mult, fair_spx = calculate_fair_value(
+        eps, scenarios, probs, liq, fiscal, geo
+    )
 
     st.subheader("Calculation Summary")
     trailing_pe = spx / eps
@@ -200,8 +230,14 @@ def run():
         results.append((sym, alloc, r, alloc * r))
 
     result_df = pd.DataFrame(results, columns=["Asset", "Allocation", "Return", "Gain/Loss"])
-    st.dataframe(result_df.style.format({"Allocation": "$ {:,.0f}", "Return": "{:.2%}", "Gain/Loss": "$ {:,.0f}"}))
-    st.metric("Total Expected Return", f"{result_df['Gain/Loss'].sum() / result_df['Allocation'].sum():.2%}")
-    st.metric("Final Portfolio Value", f"$ {result_df['Allocation'].sum() + result_df['Gain/Loss'].sum():,.0f}")
+    st.dataframe(
+        result_df.style.format({"Allocation": "$ {:,.0f}", "Return": "{:.2%}", "Gain/Loss": "$ {:,.0f}"})
+    )
+    st.metric(
+        "Total Expected Return", f"{result_df['Gain/Loss'].sum() / result_df['Allocation'].sum():.2%}"
+    )
+    st.metric(
+        "Final Portfolio Value", f"$ {result_df['Allocation'].sum() + result_df['Gain/Loss'].sum():,.0f}"
+    )
 
 run()
