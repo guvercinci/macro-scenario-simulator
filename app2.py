@@ -199,11 +199,11 @@ def run():
     oil_price=price_oil(st.sidebar.number_input("Oil Inv Change",0.0), st.sidebar.slider("OPEC Quota",-1.0,1.0,0.0), st.sidebar.number_input("Global PMI",50.0), geo_score)
     bond_yield = nelson_siegel(rt)
 
-    df_anchors=pd.DataFrame(
+        df_anchors = pd.DataFrame(
         index=["Current SPX","Weighted EPS","Weighted P/E","Gold Price","Oil Price","10Y Yield"],
         data={
             "Actual": [spx, eps, spx/eps, a_gold, a_oil, a_10y/100],
-            "Model":  [weighted_eps*0 + spx, weighted_eps, weighted_pe, gold_price, oil_price, bond_yield]
+            "Model":  [fair_spx, weighted_eps, weighted_pe, gold_price, oil_price, bond_yield]
         }
     )
     # Display Actual vs Model anchors as interactive dataframe
