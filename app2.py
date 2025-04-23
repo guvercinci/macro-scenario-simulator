@@ -68,6 +68,22 @@ def macro_conditions():
         geo = st.sidebar.slider("Geo Risk", 0.0, 1.0, 0.1)
     return liq, fiscal, geo, short_rate, m2
 
+# === Calibration ===
+# Upload historical regime observations to calibrate auto-probability weights
+st.sidebar.header("0. Calibration (Optional)
+")
+hist_file = st.sidebar.file_uploader("Upload historical macro+regime CSV", type="csv")
+COEFFS = None
+if hist_file is not None:
+    hist = pd.read_csv(hist_file)
+    # Expect columns: liq, fiscal, geo, regime
+    X = hist[['liq','fiscal','geo']].values
+    X = np.hstack([np.ones((X.shape[0],1)), X])  # intercept
+    Y = pd.get_dummies(hist['regime']).reindex(columns=['Expansion','Recession','Stagflation','Deflation']).values
+    # Least squares fit
+    B, *_ = np.linalg.lstsq(X, Y, rcond=None)
+    COEFFS = B  # shape (4 regimes x 4 coefficients)
+
 # === Sidebar: Market Inputs & Geo Flashpoints ===
 def market_inputs():
     st.sidebar.header("2. Market Inputs & Geo Flashpoints")
