@@ -90,3 +90,63 @@ if use_custom_assumptions:
 else:
     scenario_data = default_scenario_data
     st.dataframe(pd.DataFrame(default_scenario_data).T.rename(columns={"pe": "P/E Ratio", "eps_change": "Earnings Change"}).style.format({"Earnings Change": "{:.0%}"}))
+
+# Scenario probabilities
+st.header("Scenario Probabilities")
+probabilities = {}
+total_prob = 0
+for scenario in scenario_names:
+    p = st.slider(f"{scenario} Probability (%)", min_value=0, max_value=100, value=25)
+    probabilities[scenario] = p
+    total_prob += p
+
+st.write(f"**Total Assigned Probability:** {total_prob:.1f}%")
+if total_prob != 100:
+    st.warning("Total probabilities must sum to 100%.")
+
+# Run simulation
+if total_prob == 100:
+    df = editable_allocations.copy()
+    df["expected_return"] = 0.0
+
+    for scenario, weight in probabilities.items():
+        pe = scenario_data[scenario]["pe"]
+        eps = reference_prices["Trailing_EPS"] * (1 + scenario_data[scenario]["eps_change"])
+        implied_spx_price = eps * pe
+
+        # Apply macro multipliers
+        liquidity_boost = 1 + reference_prices["Liquidity Index"] * 0.1
+        stimulus_boost = 1 + reference_prices["Fiscal Stimulus"] * 0.05
+        geopolitical_drag = 1 - reference_prices["Geopolitical Risk"] * 0.05
+        macro_multiplier = liquidity_boost * stimulus_boost * geopolitical_drag
+        implied_spx_price *= macro_multiplier
+
+        gold_target = reference_prices["Gold"]
+        crude_price = reference_prices["Crude"]
+        bond_yield = reference_prices["10Y"]
+
+        for asset in df["symbol"]:
+            if asset == "Stocks":
+                r = (implied_spx_price / reference_prices["SPX"]) - 1
+            elif asset == "Treasuries":
+                r = (reference_prices["10Y"] - bond_yield) / reference_prices["10Y"]
+            elif asset == "Commodities":
+                crude_return = (crude_price / 80) - 1
+                gold_return = (gold_target / 2000) - 1
+                r = 0.5 * (crude_return + gold_return)
+            elif asset == "Gold":
+                r = (gold_target / 2000) - 1
+            elif asset == "SPY Put Spread":
+                r = (reference_prices["SPX"] - implied_spx_price) / reference_prices["SPX"] * 3
+            else:
+                r = 0
+
+            df.loc[df["symbol"] == asset, "expected_return"] += (weight / 100) * r
+
+    df["expected_dollar_return"] = df["allocation"] * df["expected_return"]
+    df["final_value"] = df["allocation"] + df["expected_dollar_return"]
+
+    st.subheader("Simulation Results")
+    st.dataframe(df.style.format({"allocation": "$ {:,.0f}", "expected_dollar_return": "$ {:,.0f}", "final_value": "$ {:,.0f}", "expected_return": "{:.2%}"}))
+    st.metric("Expected Portfolio Return", f"{df['expected_dollar_return'].sum() / df['allocation'].sum():.2%}")
+    st.metric("Expected Final Portfolio Value", f"$ {df['final_value'].sum():,.0f}")
