@@ -52,15 +52,12 @@ with col_a:
 
     if not auto_prob_toggle:
         for scenario in scenario_names:
-            p = st.number_input(f"{scenario}", min_value=0, max_value=100, value=25, step=1, key=f"prob_{scenario}")
+            p = st.number_input(f"{scenario} (manual)", min_value=0, max_value=100, value=25, step=1, key=f"manual_prob_{scenario}")
             probabilities[scenario] = p
             total_prob += p
         st.markdown(f"**Total Probability:** {total_prob:.1f}%")
         if total_prob != 100:
             st.warning("Total probabilities must sum to 100%.")
-        p = st.number_input(f"{scenario}", min_value=0, max_value=100, value=25, step=1, key=f"prob_{scenario}")
-        probabilities[scenario] = p
-        total_prob += p
     st.markdown(f"**Total Probability:** {total_prob:.1f}%")
     if total_prob != 100:
         st.warning("Total probabilities must sum to 100%.")
