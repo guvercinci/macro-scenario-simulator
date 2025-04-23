@@ -79,19 +79,29 @@ def macro_conditions():
 # === Sidebar: Market Inputs ===
 def market_inputs():
     """
-    *Gathers key market figures—SPX earnings/index—and geopolitical flags to feed downstream models.*
+    *Gathers key market figures—SPX earnings/index—and allows definition of geopolitical flashpoints with adjustable impact weights.*
     """
     st.sidebar.header("2. Market Inputs")
-    st.sidebar.markdown("_Gathers key market figures—SPX earnings/index—and geopolitical flags._")
-    eps = st.sidebar.number_input("Trailing SPX Earnings (EPS)",200.0)
-    spx = st.sidebar.number_input("Current SPX Index",5300.0)
+    st.sidebar.markdown("_Enter SPX earnings/index and define geo-flashpoint events with impact sliders._")
+    eps = st.sidebar.number_input("Trailing SPX Earnings (EPS)", 200.0)
+    spx = st.sidebar.number_input("Current SPX Index", 5300.0)
 
     st.sidebar.header("3. Geo Flashpoints")
-    st.sidebar.markdown("_Flags for major geopolitical events affecting markets._")
-    china_tariff = st.sidebar.checkbox("China–US Tariff Escalation")
-    russia_gas_cut = st.sidebar.checkbox("Russia Gas Cutoff")
+    st.sidebar.markdown("_Specify geopolitical events and assign each a custom impact weight._")
+    # Predefined events
+    geo_events = {}
+    for name in ["China–US Tariff Escalation", "Russia Gas Cutoff"]:
+        weight = st.sidebar.slider(f"Impact Weight: {name}", -1.0, 1.0, 0.0, key=name)
+        geo_events[name] = weight
+    # Custom events
+    num_custom = st.sidebar.number_input("Number of Custom Geo Events", 0, 5, 0)
+    for i in range(num_custom):
+        cname = st.sidebar.text_input(f"Custom Event {i+1} Name", key=f"custom_name_{i}")
+        if cname:
+            cweight = st.sidebar.slider(f"Impact Weight: {cname}", -1.0, 1.0, 0.0, key=f"custom_weight_{i}")
+            geo_events[cname] = cweight
 
-    return eps, spx, china_tariff, russia_gas_cut
+    return eps, spx, geo_events
 
 # === PE from Real Rates ===
 def pe_from_real(rate, prem=0.04):
