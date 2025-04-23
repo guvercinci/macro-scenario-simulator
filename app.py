@@ -120,19 +120,7 @@ st.markdown(f"→ Macro P/E Adjustment = 1 + {macro_pe_liquidity:.1%} (Liquidity
 st.markdown(f"→ Macro-Adjusted P/E = {weighted_pe:.2f} × {macro_pe_multiplier:.3f} = {adjusted_weighted_pe:.2f}")
 st.markdown(f"→ **Macro-Adjusted Fair Value = {weighted_eps:.2f} × {adjusted_weighted_pe:.2f} = {spx_fair_value:,.0f}**")
 
-macro_eps_multiplier = 1 + (liquidity_index * 0.05 + fiscal_stimulus * 0.05 - geopolitical_risk * 0.02)
-adjusted_weighted_eps = weighted_eps * macro_eps_multiplier
-macro_eps_liquidity = liquidity_index * 0.10  # Liquidity boosts P/E
-macro_eps_fiscal = fiscal_stimulus * 0.05  # Fiscal expands demand, boosts P/E
-macro_eps_geo = geopolitical_risk * -0.07  # Geopolitical tension compresses P/E
-macro_eps_multiplier = 1 + macro_eps_liquidity + macro_eps_fiscal + macro_eps_geo
-adjusted_weighted_eps = weighted_eps * macro_eps_multiplier
 
-macro_eps_liquidity = liquidity_index * 0.05
-macro_eps_fiscal = fiscal_stimulus * -0.04
-macro_eps_geo = geopolitical_risk * -0.10
-macro_eps_multiplier = 1 + macro_eps_liquidity + macro_eps_fiscal + macro_eps_geo
-adjusted_weighted_eps = weighted_eps * macro_eps_multiplier
 st.markdown(f"**Fair SPX = EPS × P/E:**")
 st.markdown(f"→ Scenario-Weighted EPS = {weighted_eps:.2f}")
 st.markdown(f"→ Macro P/E Adjustment = 1 + {macro_eps_liquidity:.1%} (Liquidity) + {macro_eps_fiscal:.1%} (Fiscal) + {macro_eps_geo:.1%} (Geopolitical) = {macro_eps_multiplier:.3f}")
