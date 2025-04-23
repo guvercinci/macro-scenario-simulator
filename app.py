@@ -28,6 +28,7 @@ trailing_pe = current_spx / trailing_eps
 st.markdown(f"**Calculated Trailing P/E Ratio:** {trailing_pe:.2f}")
 
 # 2. Macro backdrop and scenario probabilities
+probabilities = {}  # Move this up to ensure it's accessible regardless of toggle
 st.markdown("""
 ### Adjust Simulation Parameters
 Toggle automatic scenario assignment based on macro conditions.
@@ -120,6 +121,9 @@ if auto_prob_toggle:
 
     probabilities = scaled
     total_prob = sum(probabilities.values())
+    st.markdown(f"**Total Probability:** {total_prob:.1f}%")
+    for k in scenario_names:
+        st.markdown(f"**{k}:** {probabilities.get(k, 0)}%")
     st.markdown(f"**Total Probability:** {total_prob:.1f}%")
     for k, v in probabilities.items():
         st.markdown(f"**{k}:** {v}%")
