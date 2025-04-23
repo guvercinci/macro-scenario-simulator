@@ -15,16 +15,20 @@ alloc_df = pd.DataFrame(
 )
 editable_allocations = st.data_editor(alloc_df, num_rows="dynamic", use_container_width=True)
 
-# Reference values (with editable trailing P/E)
+# Reference values with editable trailing EPS and SPX
 st.header("Trailing Market Assumptions")
 col1, col2 = st.columns(2)
 with col1:
     trailing_eps = st.number_input("Trailing SPX Earnings (EPS)", value=235.0, step=1.0)
 with col2:
-    trailing_pe = st.number_input("Trailing SPX P/E Ratio", value=20.0, step=0.1)
+    current_spx = st.number_input("Current SPX Index Level", value=4700.0, step=10.0)
+
+# Calculate P/E from SPX and EPS
+trailing_pe = current_spx / trailing_eps
+st.markdown(f"**Calculated Trailing P/E Ratio:** {trailing_pe:.2f}")
 
 reference_prices = {
-    "SPX": trailing_eps * trailing_pe,
+    "SPX": current_spx,
     "Gold": 2000,
     "Crude": 80,
     "10Y": 4.0,
