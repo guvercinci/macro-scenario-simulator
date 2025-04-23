@@ -190,7 +190,7 @@ def run():
     # Compute overall fair SPX from weighted EPS and weighted P/E
     fair_spx = weighted_eps * weighted_pe
 
-        # 6. Valuation & Asset Price Anchors Comparison
+# 6. Valuation & Asset Price Anchors Comparison
     st.subheader("6. Valuation & Asset Price Anchors")
     # calculate model anchors
     gold_price = price_gold(rt, st.sidebar.number_input("VIX for Gold",20), geo_score)
@@ -210,8 +210,7 @@ def run():
         }
     )
     # Display Actual vs Model anchors as table
-    st.table(df_anchors.style.format({"Actual":"{:.2f}","Model":"{:.2f}"})) as interactive dataframe
-    st.table(df_anchors.style.format({"Actual":"{:.2f}","Model":"{:.2f}"}))
+    st.table(df_anchors.style.format({"Actual":"{:.2f}","Model":"{:.2f}"}))(df_anchors.style.format({"Actual":"{:.2f}","Model":"{:.2f}"}))
 
     # 7. Portfolio Allocation
     dfp, alloc = portfolio_editor()
