@@ -233,3 +233,10 @@ def run():
     sims = simulate(alloc, ret_asset, cov)
     st.subheader("8. Portfolio MC Distribution")
     st.line_chart(pd.Series(sims).rolling(50).mean())
+
+# Run the app
+def __main__call():
+    run()
+
+if __name__ == '__main__':
+    __main__call()
