@@ -184,8 +184,13 @@ def run():
     weighted_pe=sum(probs[r]/100*pe_list[i] for i,r in enumerate(regimes))
 
     # Display scenario fair values
-    dfv=pd.DataFrame({'Regime':regimes,'Fair SPX':values,'Ret%':rets,'P%':[probs[r] for r in regimes]})
+    dfv = pd.DataFrame({'Regime': regimes, 'Fair SPX': values, 'Ret%': rets, 'P%': [probs[r] for r in regimes]})
     st.write(dfv)
+
+    # Compute overall fair SPX from weighted EPS and weighted P/E
+    fair_spx = weighted_eps * weighted_pe
+
+    # 6. Valuation & Asset Price Anchors Comparison
 
     # 6. Valuation & Asset Price Anchors Comparison
     st.subheader("6. Valuation & Asset Price Anchors")
