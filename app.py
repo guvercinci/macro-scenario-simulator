@@ -297,4 +297,4 @@ if total_prob == 100:
         "SPX Value": "$ {:,.0f}",
         "% Change in SPX": "{:.2%}",
         "Simulated Portfolio Value": "$ {:,.0f}"
-    })):,.0f}")
+    }))
