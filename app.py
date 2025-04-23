@@ -49,7 +49,15 @@ with col_a:
     scenario_names = list(default_scenario_data.keys())
     probabilities = {}
     total_prob = 0
-    for scenario in scenario_names:
+
+    if not auto_prob_toggle:
+        for scenario in scenario_names:
+            p = st.number_input(f"{scenario}", min_value=0, max_value=100, value=25, step=1, key=f"prob_{scenario}")
+            probabilities[scenario] = p
+            total_prob += p
+        st.markdown(f"**Total Probability:** {total_prob:.1f}%")
+        if total_prob != 100:
+            st.warning("Total probabilities must sum to 100%.")
         p = st.number_input(f"{scenario}", min_value=0, max_value=100, value=25, step=1, key=f"prob_{scenario}")
         probabilities[scenario] = p
         total_prob += p
