@@ -1,5 +1,4 @@
-# app.py — Hedge-Fund–Grade Macro Simulator with Empirical Backdrop
-# Final corrected version
+# app.py — Hedge-Fund–Grade Macro Simulator with Empirical Backdrop and Asset Anchors
 
 import streamlit as st
 import pandas as pd
@@ -139,45 +138,68 @@ def simulate(alloc, ret, cov, sims=3000):
 
 # === Main ===
 def run():
+    # 1. Empirical backdrop
     liq,fiscal,geo_norm,rt,m2=macro_conditions()
+    # 2. Market inputs
     eps,spx,geo_events=market_inputs()
     geo_score=sum(geo_events.values())
+    # 3. Regime probabilities
     regimes,probs=regimes_and_probs()
     specs=define_scenarios()
 
-    # scenario inputs grouped
+    # 4. Scenario Drivers & Correlations
     st.sidebar.header("5. Scenario Drivers & Correlations")
     values,rets=[],[]; corr_vals={}
+    # We'll also compute weighted EPS/PE
+    eps_list=[]; pe_list=[]
     for reg in regimes:
         with st.sidebar.expander(reg,expanded=True):
-            gdp=st.number_input(f"GDP {reg}%",2.0,key=f"gdp{reg}")
+            gdp=st.number_input(f"GDP Growth {reg}%",2.0,key=f"gdp{reg}")
             rate_chg=st.number_input(f"Rate Shock {reg}%",0.0,key=f"rs{reg}")
             share_chg=st.number_input(f"Share Chg {reg}%",0.0,key=f"sc{reg}")
             corr_vals[reg]=st.slider(f"Eq-Gold Corr {reg}",-1.0,1.0,-0.2,key=f"c{reg}")
         eps_f=eps_proj(eps,gdp,m2,rate_chg,share_chg)
-        pe=pe_from_real(rt)*specs[reg]['pe_mul']
-        fair=eps_f*pe
-        values.append(fair); rets.append(fair/spx-1)
-    dfv=pd.DataFrame({'Regime':regimes,'Fair':values,'Ret':rets,'P': [probs[r] for r in regimes]})
+        pe_f=pe_from_real(rt)*specs[reg]['pe_mul']
+        fair=eps_f*pe_f
+        values.append(fair)
+        rets.append(fair/spx-1)
+        eps_list.append(eps_f)
+        pe_list.append(pe_f)
+    # Weighted averages
+    weighted_eps = sum(probs[r]/100 * eps_list[i] for i,r in enumerate(regimes))
+    weighted_pe  = sum(probs[r]/100 * pe_list[i]  for i,r in enumerate(regimes))
+
+    # Display fair values table
+    dfv=pd.DataFrame({'Regime':regimes,'Fair SPX':values,'Return':rets,'P(%)': [probs[r] for r in regimes]})
     st.write(dfv)
 
-    # Assets anchors
-    vix=st.sidebar.number_input("VIX",20)
-    inv=st.sidebar.number_input("Oil Inv%",0.0)
-    opec=st.sidebar.slider("OPEC Quota",-1.0,1.0,0.0)
-    gold=price_gold(rt,vix,geo_score)
-    oil=price_oil(inv,opec,st.sidebar.number_input("Global PMI",50.0),geo_score)
-    bond=nelson_siegel(rt)*0.01
+    # 6. Valuation & Asset Price Anchors
+    st.subheader("Valuation & Asset Price Anchors")
+    st.markdown(f"- **Weighted EPS:** {weighted_eps:.2f}")
+    st.markdown(f"- **Weighted P/E:** {weighted_pe:.2f}")
+    gold_price = price_gold(rt, st.sidebar.number_input("VIX for Gold",20), geo_score)
+    oil_price  = price_oil(st.sidebar.number_input("Oil Inv Change",0.0), st.sidebar.slider("OPEC Quota",-1.0,1.0,0.0), st.sidebar.number_input("Global PMI",50.0), geo_score)
+    bond_yield = nelson_siegel(rt) * 0.01
+    st.markdown(f"- **Gold Price:** ${gold_price:.2f}")
+    st.markdown(f"- **Oil Price:** ${oil_price:.2f}")
+    st.markdown(f"- **10Y Yield:** {bond_yield*100:.2f}%")
 
+    # 7. Portfolio Allocation
     dfp,alloc=portfolio_editor()
-    exp_eq=sum(probs[r]/100*rets[i] for i,r in enumerate(regimes))
-    ret_asset=np.array([exp_eq, gold/2000-1, oil/80-1, bond, DEFAULT_CASH_YIELD])
+
+    # Build asset return vector
+    exp_eq = sum(probs[r]/100 * rets[i] for i,r in enumerate(regimes))
+    ret_asset=np.array([exp_eq, gold_price/2000-1, oil_price/80-1, bond_yield, DEFAULT_CASH_YIELD])
+    # Cov matrix
     vols=np.array([0.15,0.10,0.12,0.08,0.00])
     avg_corr=np.mean(list(corr_vals.values()))
-    cov=np.diag(vols)@np.array([[1,avg_corr,0,0,0],[avg_corr,1,0,0,0],[0,0,1,0,0],[0,0,0,1,0],[0,0,0,0,1]])@np.diag(vols)
+    cov=np.diag(vols) @ np.array([[1,avg_corr,0,0,0],[avg_corr,1,0,0,0],[0,0,1,0,0],[0,0,0,1,0],[0,0,0,0,1]]) @ np.diag(vols)
+
+    # 8. Monte Carlo Simulation & Distribution
     sims=simulate(alloc,ret_asset,cov)
     st.subheader("Portfolio MC Distribution")
     st.markdown("_Shows the simulated distribution of portfolio returns over many Monte Carlo runs, highlighting expected performance and tail risk._")
     st.line_chart(pd.Series(sims).rolling(50).mean())
 
-if __name__=='__main__': run()
+if __name__=='__main__':
+    run()
