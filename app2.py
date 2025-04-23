@@ -46,15 +46,15 @@ def macro_conditions():
     if use_emp:
         override = st.sidebar.checkbox("Override backdrop manually", False)
         disabled = not override
-        fed_bs = st.sidebar.number_input("Fed Balance Sheet (% GDP)", 35.0, disabled=disabled)
-        short_rate = st.sidebar.number_input("Real Short-Term Rate (%)", 1.5, disabled=disabled)
-        m2 = st.sidebar.number_input("M2 Growth YoY (%)", 4.0, disabled=disabled)
-        deficit = st.sidebar.number_input("Budget Deficit (% GDP)", 6.0, disabled=disabled)
-        gov_spend = st.sidebar.number_input("Government Spending (% GDP)", 25.0, disabled=disabled)
-        transfers = st.sidebar.number_input("Net Transfers (% GDP)", 10.0, disabled=disabled)
-        geo_idx = st.sidebar.number_input("Geo Risk Index", 120.0, disabled=disabled)
-        vix = st.sidebar.number_input("VIX Index", 20.0, disabled=disabled)
-        conflicts = st.sidebar.number_input("Conflict Events", 30, disabled=disabled)
+        fed_bs = st.sidebar.number_input("Fed Balance Sheet (% GDP)", 38.0, disabled=disabled)  # Default ~38%, disabled=disabled)
+        short_rate = st.sidebar.number_input("Real Short-Term Rate (%)", 2.5, disabled=disabled)  # Default ~2.5%
+        m2 = st.sidebar.number_input("M2 Growth YoY (%)", 6.0, disabled=disabled)  # Default ~6%
+        deficit = st.sidebar.number_input("Budget Deficit (% GDP)", 5.0, disabled=disabled)  # Default ~5%
+        gov_spend = st.sidebar.number_input("Government Spending (% GDP)", 24.0, disabled=disabled)  # Default ~24%
+        transfers = st.sidebar.number_input("Net Transfers (% GDP)", 12.0, disabled=disabled)  # Default ~12%
+        geo_idx = st.sidebar.number_input("Geo Risk Index", 100.0, disabled=disabled)  # Default moderate risk
+        vix = st.sidebar.number_input("VIX Index", 16.0, disabled=disabled)  # Default ~16%
+        conflicts = st.sidebar.number_input("Conflict Events", 20, disabled=disabled)  # Default ~20 events
         liq = normalize_liquidity(fed_bs, short_rate, m2)
         fiscal = normalize_fiscal(deficit, gov_spend, transfers)
         geo = normalize_geo(geo_idx, vix, conflicts)
@@ -71,12 +71,12 @@ def macro_conditions():
 # === Sidebar: Market Inputs & Flashpoints ===
 def market_inputs():
     st.sidebar.header("2. Market Inputs & Geo Flashpoints")
-    eps = st.sidebar.number_input("Trailing SPX Earnings (EPS)", 200.0)
-    spx = st.sidebar.number_input("Current SPX Index", 5300.0)
+    eps = st.sidebar.number_input("Trailing SPX Earnings (EPS)", 220.0)  # Default ~$220
+    spx = st.sidebar.number_input("Current SPX Index", 4500.0)  # Default ~$4500
     st.sidebar.markdown("**Actual Asset Prices**")
-    a_gold = st.sidebar.number_input("Current Gold Price ($)", 2000.0)
-    a_oil = st.sidebar.number_input("Current Oil Price ($)", 80.0)
-    a_10y = st.sidebar.number_input("Current 10Y Yield (%)", 4.0)
+    a_gold = st.sidebar.number_input("Current Gold Price ($)", 1900.0)  # Default ~$1900
+    a_oil = st.sidebar.number_input("Current Oil Price ($)", 75.0)  # Default ~$75
+    a_10y = st.sidebar.number_input("Current 10Y Yield (%)", 3.5)  # Default ~3.5%
     st.sidebar.markdown("**Geo Flashpoint Impacts**")
     geo_events = {}
     for name in ["China–US Tariff Escalation", "Russia Gas Cutoff"]:
@@ -158,13 +158,21 @@ def run():
     # Scenario drivers & correlations
     st.sidebar.header("5. Scenario Drivers & Correlations")
     values, rets, eps_list, pe_list, corr_vals = [], [], [], [], {}
+    # === Scenario Drivers & Correlations ===
+    st.sidebar.header("5. Scenario Drivers & Correlations")
+    # Default scenario inputs per regime
+    gdp_defaults = {'Expansion': 3.0, 'Recession': -1.0, 'Stagflation': 1.0, 'Deflation': -0.5}
+    rate_defaults = {'Expansion': 0.2, 'Recession': 1.0, 'Stagflation': 0.8, 'Deflation': -0.2}
+    share_defaults = {'Expansion': 0.0, 'Recession': 0.02, 'Stagflation': 0.0, 'Deflation': 0.0}
+    values, rets, eps_list, pe_list, corr_vals = [], [], [], [], {}
     for reg in regimes:
         with st.sidebar.expander(reg, True):
-            gdp = st.number_input(f"GDP {reg}%", 2.0, key=f"gdp{reg}")
-            ratec = st.number_input(f"Rate Shock {reg}%", 0.0, key=f"rs{reg}")
-            sharec = st.number_input(f"Share Chg {reg}%", 0.0, key=f"sc{reg}")
+            # Scenario-specific default inputs
+            gdp = st.number_input(f"GDP Growth {reg}%", gdp_defaults.get(reg, 0.0), key=f"gdp{reg}")
+            ratec = st.number_input(f"Rate Shock {reg}%", rate_defaults.get(reg, 0.0), key=f"rs{reg}")
+            sharec = st.number_input(f"Share Chg {reg}%", share_defaults.get(reg, 0.0), key=f"sc{reg}")
             corr_vals[reg] = st.slider(f"Eq-Gold Corr {reg}", -1.0, 1.0, -0.2, key=f"c{reg}")
-        eps_f = eps_proj(eps, gdp, m2, ratec, sharec)
+        eps_f = eps_proj(eps, gdp, m2, ratec, sharec)(eps, gdp, m2, ratec, sharec)
         pe_f = pe_from_real(rt) * macro_mult(liq, fiscal, geo)
         fair_spx_reg = eps_f * pe_f
         values.append(fair_spx_reg)
@@ -182,10 +190,10 @@ def run():
 
     # Valuation & Asset Price Anchors Comparison
     st.subheader("6. Valuation & Asset Price Anchors")
-    gold_price = price_gold(rt, st.sidebar.number_input("VIX for Gold", 20), geo_score)
+    gold_price = price_gold(rt, st.sidebar.number_input("VIX for Gold", 16), geo_score)
     oil_price = price_oil(
-        st.sidebar.number_input("Oil Inv Change", 0.0),
-        st.sidebar.slider("OPEC Quota", -1.0, 1.0, 0.0),
+        st.sidebar.number_input("Oil Inv Change (%), 0.0),
+        st.sidebar.slider("OPEC Quota", -1.0, 1.0, 0.0)  # Default no shock),
         st.sidebar.number_input("Global PMI", 50.0),
         geo_score
     )
