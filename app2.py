@@ -27,20 +27,26 @@ def macro_conditions():
 def scenario_probabilities(auto, liq, fiscal, geo):
     st.sidebar.header("Scenario Probabilities")
     names = ["Recession", "Stagflation", "Boom", "Deflation"]
+
     if auto:
         if liq > 0.6 and fiscal > 0.5 and geo < 0.3:
-            return {"Boom": 50, "Stagflation": 15, "Recession": 15, "Deflation": 20}, True
+            probs = {"Boom": 50, "Stagflation": 15, "Recession": 15, "Deflation": 20}
         elif liq < 0.3 and fiscal < 0.3:
-            return {"Boom": 5, "Stagflation": 30, "Recession": 40, "Deflation": 25}, True
+            probs = {"Boom": 5, "Stagflation": 30, "Recession": 40, "Deflation": 25}
         elif geo > 0.6:
-            return {"Boom": 10, "Stagflation": 35, "Recession": 35, "Deflation": 20}, True
+            probs = {"Boom": 10, "Stagflation": 35, "Recession": 35, "Deflation": 20}
         else:
-            return {s: 25 for s in names}, True
+            probs = {s: 25 for s in names}
+
+        for s in names:
+            st.sidebar.number_input(f"{s} % (auto)", 0, 100, probs[s], key=f"auto_{s}", disabled=True)
+        return probs, True
+
     else:
         probs = {}
         total = 0
         for s in names:
-            p = st.sidebar.number_input(f"{s} %", 0, 100, 25)
+            p = st.sidebar.number_input(f"{s} %", 0, 100, 25, key=f"manual_{s}")
             probs[s] = p
             total += p
         return (probs, total == 100)
