@@ -5,6 +5,7 @@ import pandas as pd
 
 
 
+
 # === Constants ===
 MAX_MACRO_PE_IMPACT = 0.3
 DEFAULT_CASH_YIELD = 0.04
@@ -80,14 +81,16 @@ def run_simulation(eps, spx, probs, scenarios, macro_mult, df, targets):
     fair_spx = weighted_eps * adj_pe
     df["expected_return"] = 0.0
     for s, weight in probs.items():
-        implied_spx = eps * (1 + scenarios[s]['eps_change']) * scenarios[s]['pe'] * macro_mult
+        eps_s = eps * (1 + scenarios[s]['eps_change'])
+        pe_s = scenarios[s]['pe'] * macro_mult
+        implied_spx = eps_s * pe_s
         bond_yield = targets["10Y"]
         for i, row in df.iterrows():
             asset = row["symbol"]
             if asset == "Stocks":
                 r = (implied_spx / spx) - 1
             elif asset == "Treasuries":
-                r = BOND_DURATION * (targets["10Y"] - bond_yield) / 100
+                r = BOND_DURATION * (bond_yield - targets["10Y"]) / 100
             elif asset == "Commodities":
                 crude_r = (targets["Crude"] / 80) - 1
                 gold_r = (targets["Gold"] / 2000) - 1
@@ -97,7 +100,7 @@ def run_simulation(eps, spx, probs, scenarios, macro_mult, df, targets):
             elif asset == "Cash":
                 r = DEFAULT_CASH_YIELD
             elif asset == "SPY Put Spread":
-                fall = (spx - implied_spx) / spx
+                fall = (spx - implied_spx) / spx if spx != 0 else 0
                 r = min(max(fall, 0), 0.2) * 3
             else:
                 r = 0
