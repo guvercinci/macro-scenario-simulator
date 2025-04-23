@@ -4,7 +4,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from scipy.stats import norm, multivariate_normal
 
 # === Page Configuration ===
 st.set_page_config(
@@ -16,7 +15,6 @@ st.set_page_config(
 MAX_MACRO_PE_IMPACT = 0.6
 DEFAULT_CASH_YIELD = 0.03
 BOND_DURATION = 7
-BASE_SPX_PE = 16
 
 # === Sidebar: User Inputs ===
 def sidebar_inputs():
@@ -72,8 +70,7 @@ def sidebar_inputs():
 
 # === Macro Models ===
 def yield_curve_factor(real_rate):
-    # Nelson-Siegel placeholder: simple function mapping real rate to PE anchor
-    # deeper models can replace this
+    # Simple mapping of real rate to PE anchor
     return min(40, max(8, 1/(real_rate + 0.04)))
 
 
@@ -109,19 +106,9 @@ def eps_driver(eps, eps_delta, gdp_growth=2.0, margin_squeeze=0.01):
     return eps * (1 + eps_delta + gdp_growth*0.01 - margin_squeeze)
 
 # === Monte Carlo Simulation ===
-def simulate_runs(inputs, scenarios, targets, corr, n_sims=1000):
-    # assets: [Equity, Gold, Bonds]
-    mu = np.array([
-        # expected returns under current estimate
-        (targets['Gold']/2000 -1),
-        (targets['Crude']/80  -1),
-        (targets['10Y']/4 -1),
-    ])
-    # covariance: assume vol of 10% each
-    sigma = np.diag([0.10, 0.15, 0.05])
-    cov = sigma @ corr @ sigma
-    sims = multivariate_normal.rvs(mean=mu, cov=cov, size=n_sims)
-    return sims
+def simulate_runs(mu, cov, n_sims=1000):
+    # Use numpy's multivariate_normal
+    return np.random.multivariate_normal(mean=mu, cov=cov, size=n_sims)
 
 # === Main App ===
 def run():
@@ -144,6 +131,7 @@ def run():
         probs[s]/100 * scenarios[s]['pe']
         for s in scenarios
     )
+    base_pe = yield_curve_factor(real_rate)
     macro_mult = 1 + min(MAX_MACRO_PE_IMPACT, (weighted_pe/base_pe -1))
     fair_spx = weighted_eps * weighted_pe * macro_mult
 
@@ -172,20 +160,28 @@ def run():
     total_pct = df['AllocationPct'].sum()
     if total_pct != 100:
         st.error("Total allocation must equal 100%.")
-    df['Allocation'] = df['AllocationPct']/100 * inputs['spx']
+    df['Allocation'] = df['AllocationPct']/100 * spx
 
-    # Simulations
-    sims = simulate_runs(inputs, scenarios, targets, corr)
+    # Prepare simulation inputs
+    mu = np.array([
+        (targets['Gold']/2000 -1),
+        (targets['Crude']/80  -1),
+        (targets['10Y']/4    -1),
+    ])
+    sigma = np.diag([0.10, 0.15, 0.05])
+    cov = sigma @ corr @ sigma
+
+    sims = simulate_runs(mu, cov)
     eq_sim, gold_sim, bond_sim = sims.T
+    cash_return = DEFAULT_CASH_YIELD
     port_sim = (
         df.loc[df['Asset']=='Equities','AllocationPct'].values/100 * eq_sim +
-        df.loc[df['Asset']=='Gold','AllocationPct'].values/100 * gold_sim +
-        df.loc[df['Asset']=='Bonds','AllocationPct'].values/100 * bond_sim +
-        df.loc[df['Asset']=='Cash','AllocationPct'].values/100 * DEFAULT_CASH_YIELD
+        df.loc[df['Asset']=='Gold','AllocationPct'].values/100    * gold_sim +
+        df.loc[df['Asset']=='Bonds','AllocationPct'].values/100   * bond_sim +
+        df.loc[df['Asset']=='Cash','AllocationPct'].values/100    * cash_return
     )
 
     st.subheader("Monte Carlo Portfolio Return Distribution")
-    st.write("Histogram of simulated portfolio returns:")
     hist = np.histogram(port_sim, bins=50)
     st.bar_chart(hist[0])
 
