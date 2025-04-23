@@ -94,14 +94,47 @@ def market_inputs():
 def pe_from_real(rate, prem=0.04):
     return min(40, max(8, 1/(rate+prem)))
 
-def regimes_and_probs():
+def regimes_and_probs(liq, fiscal, geo):
+    """
+    *Automatically computes regime probabilities based on macro backdrop scores,*
+    *then allows manual override if desired.*
+    """
     st.sidebar.header("3. Regime Probabilities")
-    regimes = ["Expansion", "Recession", "Stagflation", "Deflation"]
-    probs = {r: st.sidebar.slider(f"P({r})%", 0, 100, 25) for r in regimes}
-    if sum(probs.values()) != 100:
-        st.sidebar.error("Regime probabilities must sum to 100%.")
+    # Compute automatic probabilities from macro inputs
+    # Expansion driven by liquidity and fiscal
+    exp_p = max(liq * 0.6 + fiscal * 0.4 - geo * 0.2, 0)
+    # Recession driven by low liquidity and high geo risk
+    rec_p = max((1 - liq) * 0.7 + geo * 0.3, 0)
+    # Stagflation driven by moderate growth and medium geo-fiscal mix
+    stag_p = max(fiscal * 0.2 + geo * 0.5 + liq * 0.1, 0)
+    # Deflation driven by low fiscal and low geo risk
+    defl_p = max((1 - fiscal) * 0.5 + (1 - geo) * 0.5 - liq * 0.2, 0)
+    total = exp_p + rec_p + stag_p + defl_p
+    # Normalize to sum to 1
+    auto_probs = {
+        'Expansion': exp_p/total,
+        'Recession': rec_p/total,
+        'Stagflation': stag_p/total,
+        'Deflation': defl_p/total
+    }
+    # Manual override toggle
+    override = st.sidebar.checkbox("Override probabilities manually", False)
+    probs = {}
+    for r in ['Expansion','Recession','Stagflation','Deflation']:
+        default_pct = int(auto_probs[r] * 100)
+        probs[r] = st.sidebar.slider(
+            f"P({r})%", 0, 100, default_pct,
+            disabled=not override,
+            key=f"prob_{r}"
+        )
+    # If not override, use automatic
+    if not override:
+        probs = {r: int(auto_probs[r]*100) for r in auto_probs}
+    # Ensure sum to 100 when overriding
+    if override and sum(probs.values()) != 100:
+        st.sidebar.error("Sum must equal 100% when manual override is used.")
         st.stop()
-    return regimes, probs
+    return ['Expansion','Recession','Stagflation','Deflation'], probs
 
 
 def nelson_siegel(rt):
