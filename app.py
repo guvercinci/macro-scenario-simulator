@@ -301,12 +301,7 @@ if total_prob == 100:
     })
     stress_data = sorted(stress_data, key=lambda x: x["P/E Ratio"])
 
-        stress_data.append({
-            "P/E Ratio": pe,
-            "SPX Value": round(stress_spx),
-            "% Change in SPX": stress_return,
-            "Simulated Portfolio Value": round(portfolio_value)
-        })
+    
 
     st.dataframe(pd.DataFrame(stress_data + [{"P/E Ratio": adjusted_weighted_pe, "SPX Value": round(spx_fair_value), "% Change in SPX": 0.0, "Simulated Portfolio Value": round(df['final_value'].sum())}]).style.format({
         "SPX Value": "$ {:,.0f}",
