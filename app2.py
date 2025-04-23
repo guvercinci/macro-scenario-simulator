@@ -1,4 +1,4 @@
-        "Crude": 80 * (1 + fiscal * 0.2 + geo * 0.3 + liq * 0.1),
+"Crude": 80 * (1 + fiscal * 0.2 + geo * 0.3 + liq * 0.1),
         "10Y": 4.0 * (1 - liq * 0.05 - geo * 0.05 + fiscal * 0.05),
     }
 
