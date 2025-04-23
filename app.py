@@ -271,7 +271,6 @@ if total_prob == 100:
     pe_range = range(10, 26, 2)
     stress_data = []
     stress_portfolio = []
-
     for pe in pe_range:
         stress_spx = trailing_eps * pe
         stress_return = (stress_spx / reference_prices["SPX"]) - 1
@@ -285,6 +284,22 @@ if total_prob == 100:
             else:
                 simulated = row["final_value"]
             portfolio_value += simulated
+
+        stress_data.append({
+            "P/E Ratio": pe,
+            "SPX Value": round(stress_spx),
+            "% Change in SPX": stress_return,
+            "Simulated Portfolio Value": round(portfolio_value)
+        })
+
+    # Insert the current scenario row in sorted order
+    stress_data.append({
+        "P/E Ratio": adjusted_weighted_pe,
+        "SPX Value": round(spx_fair_value),
+        "% Change in SPX": 0.0,
+        "Simulated Portfolio Value": round(df['final_value'].sum())
+    })
+    stress_data = sorted(stress_data, key=lambda x: x["P/E Ratio"])
 
         stress_data.append({
             "P/E Ratio": pe,
