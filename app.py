@@ -268,7 +268,7 @@ if total_prob == 100:
 
     # 7. Portfolio Stress Test
     st.subheader("Stress Test: SPX & P/E Sensitivity")
-st.markdown(f"**Current Scenario (Based on Inputs):** SPX ≈ {spx_fair_value:,.0f}, P/E ≈ {adjusted_weighted_pe:.2f}")
+    st.markdown(f"**Current Scenario (Based on Inputs):** SPX ≈ {spx_fair_value:,.0f}, P/E ≈ {adjusted_weighted_pe:.2f}")
     pe_range = range(10, 26, 2)
     stress_data = []
     stress_portfolio = []
