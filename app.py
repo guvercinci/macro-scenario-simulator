@@ -122,7 +122,6 @@ st.markdown(f"→ **Macro-Adjusted Fair Value = {weighted_eps:.2f} × {adjusted_
 
 st.markdown(f"**Fair SPX = EPS × P/E:**")
 st.markdown(f"→ Scenario-Weighted EPS = {weighted_eps:.2f}")
-st.markdown(f"→ Macro P/E Adjustment = 1 + {macro_eps_liquidity:.1%} (Liquidity) + {macro_eps_fiscal:.1%} (Fiscal) + {macro_eps_geo:.1%} (Geopolitical) = {macro_eps_multiplier:.3f}")
 
 # Show component breakdown
 with st.expander("See Fair Value Calculation Breakdown"):
