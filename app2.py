@@ -166,25 +166,99 @@ def define_scenarios():
         'Deflation':   {'pe_mul':0.85,'eps_d':-0.05}
     }
 
-# === Portfolio & Correlations ===
-def portfolio_and_corr():
+# === Portfolio Editor ===
+def portfolio_editor():
     """
-    *Allows users to set portfolio allocations and regime-specific equity-gold correlations.*
+    *Allows users to set portfolio allocations.*
     """
-    st.subheader("Portfolio Allocation & Corr")
-    st.markdown("_Set your asset weights and adjust correlation coefficients for each regime to capture changing relationships._")
+    st.subheader("5. Portfolio Allocation")
+    st.markdown("_Set your asset weights to define allocations for simulation._")
     assets = ['Equities','Gold','Oil','Bonds','Cash']
     df = pd.DataFrame({'Asset': assets, 'Pct': [40,20,20,15,5]})
     df = st.data_editor(df, use_container_width=True)
     if abs(df['Pct'].sum() - 100) > 0.1:
         st.error("Allocation must sum to 100%.")
         st.stop()
-    corr = {}
-    for reg in define_scenarios().keys():
-        corr[reg] = st.sidebar.slider(f"Corr eq-gold {reg}", -1.0, 1.0, -0.2, key=reg)
-    return df, corr
+    alloc = df['Pct'].values / 100
+    return df, alloc
 
 # === Monte Carlo ===
+def simulate(alloc, ret, cov, sims=3000):
+    """
+    *Generates multivariate normal return paths for assets and computes portfolio return distribution.*
+    """
+    draws = np.random.multivariate_normal(ret, cov, sims)
+    return (draws * alloc).sum(axis=1)
+
+# === Main ===
+def run():
+    """
+    *Executes the full simulation pipeline: collects inputs, computes anchors, projects scenarios,
+    and runs Monte Carlo on the assembled portfolio.*
+    """
+    # 1. Empirical backdrop
+    liq, fiscal, geo, short_term_rate, m2_growth = macro_conditions()
+    # 2. Market inputs
+    eps, spx, china_tariff, russia_gas_cut = market_inputs()
+    # 3. Regime probabilities
+    regimes, probs = regimes_and_probs()
+    specs = define_scenarios()
+
+    # 4. Scenario-specific inputs & correlations
+    values, returns = [], []
+    corr = {}
+    st.sidebar.header("5. Scenario Inputs & Correlations")
+    st.sidebar.markdown("_Group each regime's EPS drivers and correlation settings in one place._")
+    for reg in regimes:
+        with st.sidebar.expander(f"{reg} Scenario", expanded=True):
+            gdp_growth = st.number_input(f"GDP Growth (%){reg}", 2.0, key=f"gdp_{reg}")
+            rate_shock = st.number_input(f"Rate Shock (%){reg}", 0.0, key=f"rate_{reg}")
+            share_chg = st.number_input(f"Share Change (%){reg}", 0.0, key=f"share_{reg}")
+            # Correlation slider now grouped under regime
+            corr[reg] = st.slider(f"Equity-Gold Corr ({reg})", -1.0, 1.0, -0.2, key=f"corr_{reg}")
+        eps_f = eps_proj(eps, gdp_growth, m2_growth, rate_shock, share_chg)
+        pe = pe_from_real(short_term_rate) * specs[reg]['pe_mul']
+        fair = eps_f * pe
+        values.append(fair)
+        returns.append(fair / spx - 1)
+
+    # Display regime fair values
+    dfv = pd.DataFrame({'Regime': regimes, 'Fair SPX': values, 'Return': returns, 'Probability': [probs[r] for r in regimes]})
+    st.write(dfv)
+
+    # 6. Portfolio allocation
+    dfp, alloc = portfolio_editor()
+
+    # Compute expected asset returns
+    exp_eq = sum(probs[r]/100 * (values[idx]/spx - 1) for idx, r in enumerate(regimes))
+    gold_ret = price_gold(short_term_rate, st.sidebar.number_input("VIX for Gold",20), china_tariff, geo) / 2000 - 1
+    oil_ret  = price_crude(st.sidebar.number_input("Oil Inv Change",0.0), st.sidebar.slider("OPEC Shock",-1.0,1.0,0.0), st.sidebar.number_input("Global PMI",50.0), russia_gas_cut) / 80 - 1
+    bond_ret = nelson_siegel(short_term_rate) * 0.01
+    cash_ret = DEFAULT_CASH_YIELD
+
+    ret_asset = np.array([exp_eq, gold_ret, oil_ret, bond_ret, cash_ret])
+
+    # Build covariance matrix using regime-specific equity-gold correlations (others static)
+    # Basic diagonal volatilities
+    vols = np.array([0.15, 0.10, 0.12, 0.08, 0.00])
+    # Example: use average corr across regimes for equity-gold
+    avg_corr = np.mean(list(corr.values()))
+    cov = np.diag(vols) @ np.array([
+        [1.0, avg_corr, 0,   0, 0],
+        [avg_corr, 1.0, 0,   0, 0],
+        [0,       0,   1.0, 0, 0],
+        [0,       0,   0,   1.0,0],
+        [0,       0,   0,   0, 1.0]
+    ]) @ np.diag(vols)
+
+    # 7. Monte Carlo
+    port_sims = simulate(alloc, ret_asset, cov)
+
+    st.subheader("Portfolio MC Distribution")
+    st.line_chart(pd.Series(port_sims).rolling(50).mean())
+
+if __name__ == '__main__':
+    run()
 def simulate(alloc, ret, cov, sims=3000):
     """
     *Generates multivariate normal return paths for assets and computes portfolio return distribution.*
