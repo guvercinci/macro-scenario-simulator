@@ -127,6 +127,7 @@ def macro_targets(liq, fiscal, geo):
 
 def portfolio_editor():
     st.subheader("Portfolio Allocation")
+    portfolio_size = st.number_input("Total Portfolio Size ($)", value=100000, step=10000)
     preset = st.selectbox("Choose a Portfolio Preset:", ["Balanced (60/40)", "Aggressive Growth", "Defensive Hedge", "Custom"], index=0)
 
     if preset == "Balanced (60/40)":
@@ -140,8 +141,9 @@ def portfolio_editor():
 
     df = pd.DataFrame(data)
     df = st.data_editor(df, num_rows="fixed", use_container_width=True, key="portfolio_editor")
+    df["allocation"] = df["allocation_pct"] / 100 * portfolio_size
     df["allocation"] = df["allocation_pct"] / 100 * 100000
-    return df[["symbol", "allocation"]], use_container_width=True)
+    return df[["symbol", "allocation"]]
 
 def simulate(eps, spx, probs, scenarios, macro_mult, alloc, targets):
     total = alloc["allocation"].sum()
