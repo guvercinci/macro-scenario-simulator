@@ -186,7 +186,7 @@ def run():
     liq, fiscal, geo, rt, m2 = macro_conditions()
     eps, spx, a_gold, a_oil, a_10y, geo_events = market_inputs()
     geo_score = sum(geo_events.values())
-    regimes, probs = regimes_and_probs()
+    regimes, probs = regimes_and_probs(liq, fiscal, geo)
 
     # Scenario Drivers & Correlations
     st.sidebar.header("5. Scenario Drivers & Correlations")
