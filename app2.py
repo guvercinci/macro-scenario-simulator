@@ -62,7 +62,12 @@ def default_scenarios():
     }
 
 def macro_multiplier(liq, fiscal, geo):
-    return 1 + min(MAX_MACRO_PE_IMPACT, liq * 0.10 + fiscal * 0.05 - geo * 0.07)
+    # Edge-case aware macro multiplier
+    liquidity_impact = liq * 0.25  # larger upward push when fully flooded
+    fiscal_impact = fiscal * 0.2   # stronger multiplier when stimulus is high
+    geo_impact = -geo * 0.3        # more negative impact if geopolitical risk is high
+    combined = liquidity_impact + fiscal_impact + geo_impact
+    return 1 + min(MAX_MACRO_PE_IMPACT, combined)
 
 def macro_targets(liq, fiscal, geo):
     return {
