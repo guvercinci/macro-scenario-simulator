@@ -202,24 +202,4 @@ def run():
         }
     )
     # Display Actual vs Model anchors as interactive dataframe
-    st.dataframe(df_anchors.style.format({"Actual":"{:.2f}","Model":"{:.2f}"}))({"Actual":"{:.2f}","Model":"{:.2f}"}))
-
-    # 7. Portfolio Allocation
-    dfp, alloc = portfolio_editor()
-    exp_eq=sum(probs[r]/100*rets[i] for i,r in enumerate(regimes))
-    ret_asset=np.array([exp_eq, gold_price/a_gold-1, oil_price/a_oil-1, bond_yield, DEFAULT_CASH_YIELD])
-    vols=np.array([0.15,0.10,0.12,0.08,0.00])
-    avg_corr=np.mean(list(corr_vals.values()))
-    cov=np.diag(vols) @ np.array([[1,avg_corr,0,0,0],[avg_corr,1,0,0,0],[0,0,1,0,0],[0,0,0,1,0],[0,0,0,0,1]]) @ np.diag(vols)
-
-    # 8. Expected Portfolio Return Summary
-    # Calculate and display expected portfolio return before simulation
-    exp_port_return = np.dot(alloc, ret_asset)
-    st.subheader("Expected Portfolio Return")
-    st.metric(label="Expected Return", value=f"{exp_port_return:.2%}")
-
-    # 9. Monte Carlo Simulation & Distribution
-    sims = simulate(alloc, ret_asset, cov)
-    st.subheader("Portfolio MC Distribution")
-    st.markdown("_Simulated return distribution, showing expected outcome and tail risk._")
-    st.line_chart(pd.Series(sims).rolling(50).mean())
+    st.table(df_anchors.style.format({"Actual":"{:.2f}","Model":"{:.2f}"}))
