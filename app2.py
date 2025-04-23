@@ -209,10 +209,15 @@ Asset class returns are then computed based on these conditions.
     st.subheader("Calculation Summary")
     trailing_pe = spx / eps if eps != 0 else 0
     st.markdown(f"**1. Trailing P/E (SPX / EPS):** {spx:,.0f} / {eps:.2f} = {trailing_pe:.2f}")
-    st.markdown(f"**2. Weighted Forward EPS:** {weighted_eps:.2f} (based on scenario-weighted earnings)")
-    st.markdown(f"**3. Weighted P/E:** {weighted_pe:.2f} (based on scenario-weighted multiples)")
-    st.markdown(f"**4. Macro Multiplier:** {macro_mult:.3f} (adjusting for liquidity, stimulus, and risk)")
+    st.markdown("_This shows how expensive the market is relative to trailing earnings._")
+    st.markdown(f"**2. Weighted Forward EPS:** {weighted_eps:.2f}")
+    st.markdown("_Calculated as the probability-weighted average of projected scenario earnings._")
+    st.markdown(f"**3. Weighted P/E:** {weighted_pe:.2f}")
+    st.markdown("_This is the average scenario-based valuation multiple, weighted by macro scenario probabilities._")
+    st.markdown(f"**4. Macro Multiplier:** {macro_mult:.3f}")
+    st.markdown("_Reflects the combined effect of liquidity, stimulus, and geopolitical risk on valuations._")
     st.markdown(f"**5. Fair SPX Estimate:** {weighted_eps:.2f} × {weighted_pe:.2f} × {macro_mult:.3f} = {fair_spx:,.0f}")
+    st.markdown("_The final macro-adjusted fair value for the S&P 500 based on fundamentals and macro overlays._")
 
     st.subheader("Macro-Adjusted Asset Targets")
     st.markdown(f"- **Gold Target Price:** ${targets['Gold']:.2f}")
