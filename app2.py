@@ -106,8 +106,15 @@ def market_inputs():
     return eps, spx, a_gold, a_oil, a_10y, geo_events
 
 # === Utility Functions ===
-def pe_from_real(rate, prem=0.04):
-    return min(40, max(8, 1/(rate+prem)))
+def pe_from_real(rate_pct, prem=0.04):
+    """
+    *Calculates a baseline P/E anchor by inverting the required return (real rate in decimal + equity premium), with percent input.*
+    """
+    # Convert percentage input to decimal
+    real_rate = rate_pct / 100.0
+    required_return = real_rate + prem
+    pe = 1 / required_return if required_return > 0 else float('inf')
+    return min(40, max(8, pe))
 
 def regimes_and_probs(liq, fiscal, geo):
     """
