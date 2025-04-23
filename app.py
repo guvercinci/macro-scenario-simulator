@@ -268,8 +268,7 @@ if total_prob == 100:
 
     # 7. Portfolio Stress Test
     st.subheader("Stress Test: SPX & P/E Sensitivity")
-    st.markdown(f"**Current Scenario (Based on Inputs):** SPX ≈ {spx_fair_value:,.0f}, P/E ≈ {adjusted_weighted_pe:.2f}")
-    pe_range = range(10, 26, 2)
+        pe_range = range(10, 26, 2)
     stress_data = []
     stress_portfolio = []
 
@@ -294,7 +293,7 @@ if total_prob == 100:
             "Simulated Portfolio Value": round(portfolio_value)
         })
 
-    st.dataframe(pd.DataFrame(stress_data).style.format({
+    st.dataframe(pd.DataFrame(stress_data + [{"P/E Ratio": adjusted_weighted_pe, "SPX Value": round(spx_fair_value), "% Change in SPX": 0.0, "Simulated Portfolio Value": round(df['final_value'].sum())}]).style.format({
         "SPX Value": "$ {:,.0f}",
         "% Change in SPX": "{:.2%}",
         "Simulated Portfolio Value": "$ {:,.0f}"
