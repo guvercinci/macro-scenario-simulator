@@ -265,3 +265,36 @@ if total_prob == 100:
     st.dataframe(df.style.format({"allocation": "$ {:,.0f}", "expected_dollar_return": "$ {:,.0f}", "final_value": "$ {:,.0f}", "expected_return": "{:.2%}"}))
     st.metric("Expected Portfolio Return", f"{df['expected_dollar_return'].sum() / df['allocation'].sum():.2%}")
     st.metric("Expected Final Portfolio Value", f"$ {df['final_value'].sum():,.0f}")
+
+    # 7. Portfolio Stress Test
+    st.subheader("Stress Test: SPX & P/E Sensitivity")
+    pe_range = range(10, 26, 2)
+    stress_data = []
+    stress_portfolio = []
+
+    for pe in pe_range:
+        stress_spx = trailing_eps * pe
+        stress_return = (stress_spx / reference_prices["SPX"]) - 1
+
+        portfolio_value = 0
+        for _, row in df.iterrows():
+            if row["symbol"] == "Stocks":
+                simulated = row["allocation"] * (1 + stress_return)
+            elif row["symbol"] == "SPY Put Spread":
+                simulated = row["allocation"] * (1 + (-stress_return * 3))
+            else:
+                simulated = row["final_value"]
+            portfolio_value += simulated
+
+        stress_data.append({
+            "P/E Ratio": pe,
+            "SPX Value": round(stress_spx),
+            "% Change in SPX": stress_return,
+            "Simulated Portfolio Value": round(portfolio_value)
+        })
+
+    st.dataframe(pd.DataFrame(stress_data).style.format({
+        "SPX Value": "$ {:,.0f}",
+        "% Change in SPX": "{:.2%}",
+        "Simulated Portfolio Value": "$ {:,.0f}"
+    })):,.0f}")
