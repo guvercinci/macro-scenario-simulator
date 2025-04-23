@@ -191,13 +191,26 @@ def run():
     st.write(dfv)
 
     dfp, corr = portfolio_and_corr()
-    alloc = dfp['Pct'] / 100
-    ret_arr = np.array(returns)
+    alloc = dfp['Pct'].values / 100
+
+    # Compute expected asset returns
+    exp_eq = sum(probs[r]/100 * (values[idx]/spx - 1) for idx, r in enumerate(regimes))
+    gold_ret = gold / 2000 - 1
+    oil_ret  = oil / 80   - 1
+    bond_ret = bond  # in decimal form
+    cash_ret = DEFAULT_CASH_YIELD
+
+    ret_asset = np.array([exp_eq, gold_ret, oil_ret, bond_ret, cash_ret])
+
+    # Covariance matrix placeholder
     sigma = np.diag([0.15, 0.10, 0.12, 0.08, 0.00])
-    cov = sigma @ np.eye(5) @ sigma
-    port_sims = simulate(alloc, ret_arr, cov)
-    st.subheader("MC Port Distribution")
+    cov   = sigma @ np.eye(5) @ sigma
+
+    port_sims = simulate(alloc, ret_asset, cov)
+
+    st.subheader("Portfolio MC Distribution")
     st.line_chart(pd.Series(port_sims).rolling(50).mean())
 
 if __name__=='__main__':
+    run()=='__main__':
     run()
