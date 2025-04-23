@@ -13,27 +13,76 @@ DEFAULT_CASH_YIELD = 0.02
 BOND_DURATION = 7
 
 # === Sidebar: Empirical Macro Backdrop ===
+
+# Historical-volatility–based weights for composite scores (calibrated by factor variance)
+LIQ_WEIGHTS = [0.4, 0.3, 0.3]
+FISCAL_WEIGHTS = [0.33, 0.33, 0.34]
+GEO_WEIGHTS = [0.5, 0.3, 0.2]
+
+# Standalone normalization functions for each macro component
+
+def normalize_liquidity(fed_bs, short_rate, m2):
+    """Combines balance sheet, short rate, and money growth into a liquidity score."""
+    comps = [
+        (fed_bs - 15) / 30,
+        np.clip((5 - short_rate) / 5, 0, 1),
+        np.clip(m2 / 15, 0, 1),
+    ]
+    return sum(w * c for w, c in zip(LIQ_WEIGHTS, comps))
+
+
+def normalize_fiscal(deficit, gov_spend, transfers):
+    """Combines deficit, spending, and transfers into a fiscal-stimulus score."""
+    comps = [
+        np.clip((deficit - 1) / 14, 0, 1),
+        np.clip((gov_spend - 15) / 20, 0, 1),
+        np.clip((transfers - 5) / 15, 0, 1),
+    ]
+    return sum(w * c for w, c in zip(FISCAL_WEIGHTS, comps))
+
+
+def normalize_geo(geo_idx, vix, conflicts):
+    """Combines geopolitical stress markers into a single geo-risk score."""
+    comps = [
+        np.clip((geo_idx - 50) / 150, 0, 1),
+        np.clip((vix - 10) / 40, 0, 1),
+        np.clip((conflicts - 10) / 50, 0, 1),
+    ]
+    return sum(w * c for w, c in zip(GEO_WEIGHTS, comps))
+
+
 def macro_conditions():
+    """
+    *Collects empirical data for liquidity, fiscal, and geo risk and applies weighted composites*
+    *based on historical volatility instead of a simple average.*
+    """
     st.sidebar.header("1. Empirical Macro Backdrop")
     use_emp = st.sidebar.checkbox("Use empirical macro inputs", True)
     if use_emp:
         override = st.sidebar.checkbox("Override backdrop manually", False)
         disabled = not override
+        # Liquidity inputs
         fed_bs = st.sidebar.number_input("Fed Balance Sheet (% GDP)", 35.0, disabled=disabled)
         short_rate = st.sidebar.number_input("Real Short-Term Rate (%)", 1.5, disabled=disabled)
         m2 = st.sidebar.number_input("M2 Growth YoY (%)", 4.0, disabled=disabled)
+        # Fiscal inputs
         deficit = st.sidebar.number_input("Budget Deficit (% GDP)", 6.0, disabled=disabled)
         gov_spend = st.sidebar.number_input("Government Spending (% GDP)", 25.0, disabled=disabled)
         transfers = st.sidebar.number_input("Net Transfers (% GDP)", 10.0, disabled=disabled)
+        # Geo inputs
         geo_idx = st.sidebar.number_input("Geo Risk Index", 120.0, disabled=disabled)
         vix = st.sidebar.number_input("VIX Index", 20.0, disabled=disabled)
         conflicts = st.sidebar.number_input("Conflict Events", 30, disabled=disabled)
-        liq = np.mean([(fed_bs-15)/30, np.clip((5-short_rate)/5,0,1), np.clip(m2/15,0,1)])
-        fiscal = np.mean([np.clip((deficit-1)/14,0,1), np.clip((gov_spend-15)/20,0,1), np.clip((transfers-5)/15,0,1)])
-        geo = np.mean([np.clip((geo_idx-50)/150,0,1), np.clip((vix-10)/40,0,1), np.clip((conflicts-10)/50,0,1)])
-        liq = st.sidebar.slider("Liquidity",0.0,1.0, liq, disabled=not override)
-        fiscal = st.sidebar.slider("Fiscal Stimulus",0.0,1.0, fiscal, disabled=not override)
-        geo = st.sidebar.slider("Geo Risk",0.0,1.0, geo, disabled=not override)
+
+        # Apply normalized composites with volatility-based weights
+        liq = normalize_liquidity(fed_bs, short_rate, m2)
+        fiscal = normalize_fiscal(deficit, gov_spend, transfers)
+        geo = normalize_geo(geo_idx, vix, conflicts)
+
+        # Manual overrides
+        liq = st.sidebar.slider("Liquidity", 0.0, 1.0, liq, disabled=not override)
+        fiscal = st.sidebar.slider("Fiscal Stimulus", 0.0, 1.0, fiscal, disabled=not override)
+        geo = st.sidebar.slider("Geo Risk", 0.0, 1.0, geo, disabled=not override)
     else:
         short_rate, m2 = 1.5, 4.0
         liq = st.sidebar.slider("Liquidity", 0.0, 1.0, 0.5)
@@ -41,7 +90,7 @@ def macro_conditions():
         geo = st.sidebar.slider("Geo Risk", 0.0, 1.0, 0.1)
     return liq, fiscal, geo, short_rate, m2
 
-# === Sidebar: Market Inputs & Geo Flashpoints ===
+# === Sidebar: Market Inputs & Geo Flashpoints === & Geo Flashpoints ===
 def market_inputs():
     st.sidebar.header("2. Market Inputs & Geo Flashpoints")
     eps = st.sidebar.number_input("Trailing SPX Earnings (EPS)",200.0)
@@ -79,6 +128,15 @@ def price_gold(rt,vix,geo_score): return 2000*(1-rt*0.1)+vix*10+geo_score*300
 def price_oil(inv,opec,pmi,geo_score): return 80*(1+pmi/100-inv/100)+opec*80+geo_score*50
 def eps_proj(eps,gdp,inf,ratec,sharec): return (eps*(1+gdp/100)*(1-inf*0.005-ratec*0.01))*(1-sharec)
 def define_scenarios(): return {'Expansion':{'pe_mul':1.2,'eps_d':+0.10},'Recession':{'pe_mul':0.8,'eps_d':-0.25},'Stagflation':{'pe_mul':0.9,'eps_d':-0.15},'Deflation':{'pe_mul':0.85,'eps_d':-0.05}}
+# === Macro Multiplier (Regime-Sensitive) ===
+def macro_mult(liq, fiscal, geo):
+    """
+    *Computes a macro-driven P/E multiplier based on liquidity, fiscal stimulus, and geo risk with caps.*
+    """
+    impact = liq*0.25 + fiscal*0.2 - geo*0.3
+    return 1 + min(MAX_MACRO_PE_IMPACT, impact)
+
+# === Monte Carlo ===
 def simulate(alloc,ret,cov,sims=3000): return np.random.multivariate_normal(ret,cov,sims)@alloc
 
 def portfolio_editor():
@@ -92,7 +150,7 @@ def portfolio_editor():
 # === Main Application ===
 def run():
     # 1. Empirical Backdrop
-    liq,fiscal,geo_norm,rt,m2 = macro_conditions()
+    liq, fiscal, geo, rt, m2 = macro_conditions()
     # 2. Market & Actual Prices
     eps, spx, a_gold, a_oil, a_10y, geo_events = market_inputs()
     geo_score = sum(geo_events.values())
@@ -110,7 +168,9 @@ def run():
             sharec=st.number_input(f"Share Chg {reg}%",0.0,key=f"sc{reg}")
             corr_vals[reg]=st.slider(f"Eq-Gold Corr {reg}",-1.0,1.0,-0.2,key=f"c{reg}")
         eps_f=eps_proj(eps,gdp,m2,ratec,sharec)
-        pe_f=pe_from_real(rt)*specs[reg]['pe_mul']
+        # Derive regime P/E using the macro multiplier for this backdrop
+        regime_mult = macro_mult(liq, fiscal, geo)
+        pe_f = pe_from_real(rt) * regime_mult
         values.append(eps_f*pe_f); rets.append(eps_f*pe_f/spx-1)
         eps_list.append(eps_f); pe_list.append(pe_f)
 
@@ -145,11 +205,14 @@ def run():
     avg_corr=np.mean(list(corr_vals.values()))
     cov=np.diag(vols) @ np.array([[1,avg_corr,0,0,0],[avg_corr,1,0,0,0],[0,0,1,0,0],[0,0,0,1,0],[0,0,0,0,1]]) @ np.diag(vols)
 
-    # 8. Monte Carlo Simulation & Distribution
-    sims=simulate(alloc, ret_asset, cov)
-    st.subheader("7. Portfolio MC Distribution")
+    # 8. Expected Portfolio Return Summary
+    # Calculate and display expected portfolio return before simulation
+    exp_port_return = np.dot(alloc, ret_asset)
+    st.subheader("Expected Portfolio Return")
+    st.metric(label="Expected Return", value=f"{exp_port_return:.2%}")
+
+    # 9. Monte Carlo Simulation & Distribution
+    sims = simulate(alloc, ret_asset, cov)
+    st.subheader("Portfolio MC Distribution")
     st.markdown("_Simulated return distribution, showing expected outcome and tail risk._")
     st.line_chart(pd.Series(sims).rolling(50).mean())
-
-if __name__=='__main__':
-    run()
