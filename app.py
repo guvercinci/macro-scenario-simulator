@@ -70,14 +70,16 @@ spx_macro_adjustment = trailing_eps * trailing_pe * (1 + multiplier_explainer)
 
 st.markdown(f"**Implied SPX (Current Valuation):** {trailing_eps * trailing_pe:,.0f}")
 weighted_eps = sum(
-    probabilities[s] / 100 * trailing_eps * (1 + scenario_data[s]['eps_change']) for s in scenario_names
+    probabilities[s] / 100 * trailing_eps * (1 + scenario_data[s]['eps_change'])
+    for s in scenario_names
 )
 weighted_pe = sum(
-    probabilities[s] / 100 * scenario_data[s]['pe'] for s in scenario_names
+    probabilities[s] / 100 * scenario_data[s]['pe']
+    for s in scenario_names
 )
 spx_fair_value = weighted_eps * weighted_pe
-st.markdown(f"**Long-Term Fair Value (Based on Scenario Weighting):** {spx_fair_value:,.0f}")
 st.markdown(f"**Macro-Adjusted SPX Estimate:** {spx_macro_adjustment:,.0f}")
+st.markdown(f"**Scenario-Weighted Fair Value (EPS × P/E):** {spx_fair_value:,.0f}")
 st.markdown(f"**Gold Price:** ${adjusted_gold:.2f}  Crude Oil:** ${adjusted_crude:.2f}  10-Year Yield:** {adjusted_10y:.2f}%")
 
 reference_prices = {
