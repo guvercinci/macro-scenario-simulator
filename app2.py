@@ -20,14 +20,12 @@ BOND_DURATION = 7
 def macro_conditions():
     st.sidebar.header("1. Empirical Macro Backdrop")
     use_emp = st.sidebar.checkbox("Use empirical macro inputs", True)
-    override = st.sidebar.checkbox("Override backdrop manually", False)
-    disabled = not override
-
-    # Defaults
+    # default values
     short_term_rate = 1.5
     m2_growth = 4.0
-
     if use_emp:
+        override = st.sidebar.checkbox("Override backdrop manually", False)
+        disabled = not override
         # Liquidity inputs
         st.sidebar.markdown("#### Liquidity Inputs")
         fed_bs = st.sidebar.number_input("Fed Balance Sheet (% GDP)", 35.0, disabled=disabled)
@@ -61,12 +59,14 @@ def macro_conditions():
             np.clip((conflicts-10)/50,0,1)
         ])
 
-        # Manual override
+        # Manual overrides
         st.sidebar.markdown("#### Override Derived Backdrop")
         liq = st.sidebar.slider("Liquidity",0.0,1.0,liq,disabled=not override)
         fiscal = st.sidebar.slider("Fiscal Stimulus",0.0,1.0,fiscal,disabled=not override)
         geo = st.sidebar.slider("Geo Risk",0.0,1.0,geo,disabled=not override)
     else:
+        override = False
+        disabled = True
         liq = st.sidebar.slider("Liquidity",0.0,1.0,0.5)
         fiscal = st.sidebar.slider("Fiscal Stimulus",0.0,1.0,0.3)
         geo = st.sidebar.slider("Geo Risk",0.0,1.0,0.1)
@@ -103,28 +103,29 @@ def regimes_and_probs():
 
 # === Yield Curve Model ===
 def nelson_siegel(real_rate):
-    lvl=1; slope=-1*((1-np.exp(-real_rate))/real_rate)
-    curv=0.5*(((1-np.exp(-real_rate))/real_rate)-np.exp(-real_rate))
-    return lvl+slope+curv
+    lvl = 1
+    slope = -1 * ((1 - np.exp(-real_rate)) / real_rate)
+    curv = 0.5 * (((1 - np.exp(-real_rate)) / real_rate) - np.exp(-real_rate))
+    return lvl + slope + curv
 
 # === Gold & Crude Pricing ===
 def price_gold(real_rate, vix, china_tariff, geo):
-    base=2000*(1-real_rate*0.1)
-    safe=vix*10
-    shock=300 if china_tariff or geo>0.6 else 0
-    return base+safe+shock
+    base = 2000 * (1 - real_rate * 0.1)
+    safe = vix * 10
+    shock = 300 if china_tariff or geo > 0.6 else 0
+    return base + safe + shock
 
 def price_crude(inv_change, opec_quota, pmi, russia_cut):
-    base=80*(1+pmi/100-inv_change/100)
-    supply=base*opec_quota
-    shock=50 if russia_cut else 0
-    return base+supply+shock
+    base = 80 * (1 + pmi/100 - inv_change/100)
+    supply = base * opec_quota
+    shock = 50 if russia_cut else 0
+    return base + supply + shock
 
 # === EPS Segmentation ===
 def eps_proj(eps, gdp, inflation, rate_chg, share_chg):
-    rev=eps*(1+gdp/100)
-    marg=rev*(1-inflation*0.005-rate_chg*0.01)
-    return marg*(1-share_chg)
+    rev = eps * (1 + gdp/100)
+    marg = rev * (1 - inflation*0.005 - rate_chg*0.01)
+    return marg * (1 - share_chg)
 
 # === Define Scenarios ===
 def define_scenarios():
@@ -138,66 +139,63 @@ def define_scenarios():
 # === Portfolio & Correlations ===
 def portfolio_and_corr():
     st.subheader("Portfolio Allocation & Corr")
-    assets=['Equities','Gold','Oil','Bonds','Cash']
-    df=pd.DataFrame({'Asset':assets,'Pct':[40,20,20,15,5]})
-    df=st.data_editor(df,use_container_width=True)
-    if abs(df['Pct'].sum()-100)>0.1:
+    assets = ['Equities','Gold','Oil','Bonds','Cash']
+    df = pd.DataFrame({'Asset': assets, 'Pct': [40,20,20,15,5]})
+    df = st.data_editor(df, use_container_width=True)
+    if abs(df['Pct'].sum() - 100) > 0.1:
         st.error("Sum !=100%")
         st.stop()
-    corr={}
+    corr = {}
     for reg in define_scenarios().keys():
-        corr[reg]=st.slider(f"Corr eq-gold {reg}",-1.0,1.0,-0.2,key=reg)
+        corr[reg] = st.slider(f"Corr eq-gold {reg}", -1.0, 1.0, -0.2, key=reg)
     return df, corr
 
 # === Monte Carlo ===
 def simulate(alloc, ret, cov, sims=3000):
-    sims=np.random.multivariate_normal(ret,cov,sims)
-    return (sims*alloc).sum(axis=1)
+    draws = np.random.multivariate_normal(ret, cov, sims)
+    return (draws * alloc).sum(axis=1)
 
 # === Main ===
 def run():
-    # Empirical backdrop
-    liq,fiscal,geo,short_term_rate,m2_growth = macro_conditions()
-    # Market inputs
-    eps,spx,china_tariff,russia_gas_cut = market_inputs()
-    # Regimes
-    regimes,probs = regimes_and_probs()
+    liq, fiscal, geo, short_term_rate, m2_growth = macro_conditions()
+    eps, spx, china_tariff, russia_gas_cut = market_inputs()
+    regimes, probs = regimes_and_probs()
     specs = define_scenarios()
 
     # Compute anchor prices
-    vix = st.sidebar.number_input("VIX for Gold",20)
-    inv = st.sidebar.number_input("Oil Inv Change",0.0)
-    opec = st.sidebar.slider("OPEC Shock",-1.0,1.0,0.0)
-    pmi  = st.sidebar.number_input("Global PMI",50.0)
+    vix = st.sidebar.number_input("VIX for Gold", 20)
+    inv = st.sidebar.number_input("Oil Inv Change", 0.0)
+    opec = st.sidebar.slider("OPEC Shock", -1.0, 1.0, 0.0)
+    pmi  = st.sidebar.number_input("Global PMI", 50.0)
 
     gold = price_gold(short_term_rate, vix, china_tariff, geo)
-    oil  = price_crude(inv,opec,pmi,russia_gas_cut)
-    bond = nelson_siegel(short_term_rate)*0.01
+    oil  = price_crude(inv, opec, pmi, russia_gas_cut)
+    bond = nelson_siegel(short_term_rate) * 0.01
 
     # EPS projections & fair SPX
-    values=[]; returns=[]
+    values, returns = [], []
     for reg in regimes:
-        eps_f = eps_proj(eps,
-            st.sidebar.number_input(f"GDP Growth {reg}",2.0),
-            m2_growth, st.sidebar.number_input(f"Rate Shock {reg}%",0.0),
-            st.sidebar.number_input(f"Share Chg {reg}%",0.0)
+        eps_f = eps_proj(
+            eps,
+            st.sidebar.number_input(f"GDP Growth {reg}", 2.0),
+            m2_growth,
+            st.sidebar.number_input(f"Rate Shock {reg}%", 0.0),
+            st.sidebar.number_input(f"Share Chg {reg}%", 0.0)
         )
-        pe = pe_from_real(short_term_rate)*specs[reg]['pe_mul']
-        fair = eps_f*pe
+        pe = pe_from_real(short_term_rate) * specs[reg]['pe_mul']
+        fair = eps_f * pe
         values.append(fair)
-        returns.append(fair/spx-1)
+        returns.append(fair / spx - 1)
 
-    # Display
-    dfv=pd.DataFrame({'Regime':regimes,'Fair SPX':values,'Ret':returns,'P': [probs[r] for r in regimes]})
+    dfv = pd.DataFrame({'Regime': regimes, 'Fair SPX': values, 'Ret': returns, 'P': [probs[r] for r in regimes]})
     st.write(dfv)
 
-    # Portfolio & MC
-    dfp,corr = portfolio_and_corr()
-    alloc = dfp['Pct']/100
+    dfp, corr = portfolio_and_corr()
+    alloc = dfp['Pct'] / 100
     ret_arr = np.array(returns)
-    sigma = np.diag([0.15,0.10,0.12,0.08,0.00])
-    cov = sigma@np.eye(5)@sigma
-    port_sims=simulate(alloc,ret_arr,cov)
+    sigma = np.diag([0.15, 0.10, 0.12, 0.08, 0.00])
+    cov = sigma @ np.eye(5) @ sigma
+    port_sims = simulate(alloc, ret_arr, cov)
     st.subheader("MC Port Distribution")
     st.line_chart(pd.Series(port_sims).rolling(50).mean())
 
