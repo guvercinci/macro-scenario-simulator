@@ -20,16 +20,35 @@ reference_prices = {
     "SPX": 4700,
     "Gold": 2000,
     "Crude": 80,
-    "10Y": 4.0
+    "10Y": 4.0,
+    "Trailing_EPS": 235
 }
 
-# Assumed PE ratios for SPX per scenario
-pe_ratios = {
-    "Recession": 14,
-    "Stagflation": 15,
-    "Boom": 20,
-    "Deflation": 17
+# Default PE and EPS data
+default_scenario_data = {
+    "Recession": {"pe": 14, "eps_change": -0.20},
+    "Stagflation": {"pe": 15, "eps_change": -0.10},
+    "Boom": {"pe": 20, "eps_change": 0.15},
+    "Deflation": {"pe": 17, "eps_change": -0.05}
 }
+
+# Editable assumption toggle
+st.header("Scenario Assumption Configuration")
+use_custom_assumptions = st.checkbox("Manually edit P/E and EPS change assumptions", value=False)
+
+# Set up scenario assumptions either editable or default
+scenario_names = list(default_scenario_data.keys())
+if use_custom_assumptions:
+    assumption_input = pd.DataFrame(default_scenario_data).T.reset_index().rename(columns={"index": "Scenario", "pe": "P/E Ratio", "eps_change": "Earnings Change (%)"})
+    assumption_input["Earnings Change (%)"] *= 100
+    edited_assumptions = st.data_editor(assumption_input, num_rows="fixed", use_container_width=True)
+    scenario_data = {
+        row["Scenario"]: {"pe": row["P/E Ratio"], "eps_change": row["Earnings Change (%)"] / 100}
+        for _, row in edited_assumptions.iterrows()
+    }
+else:
+    scenario_data = default_scenario_data
+    st.dataframe(pd.DataFrame(default_scenario_data).T.rename(columns={"pe": "P/E Ratio", "eps_change": "Earnings Change"}).style.format({"Earnings Change": "{:.0%}"}))
 
 # Assumed Gold prices per scenario
 gold_targets = {
@@ -39,13 +58,8 @@ gold_targets = {
     "Deflation": 2100
 }
 
-# Input: User's earnings expectation for SPX
-st.header("Earnings Forecast")
-earnings_input = st.number_input("Expected S&P 500 Index Earnings (EPS)", value=235)
-
 # Scenario probabilities
 st.header("Enter Scenario Probabilities")
-scenario_names = ["Recession", "Stagflation", "Boom", "Deflation"]
 probabilities = {}
 total_prob = 0
 for scenario in scenario_names:
@@ -64,9 +78,11 @@ if total_prob == 100:
     df["expected_return"] = 0.0
 
     for scenario, weight in probabilities.items():
-        pe = pe_ratios[scenario]
+        data = scenario_data[scenario]
+        pe = data["pe"]
+        eps = reference_prices["Trailing_EPS"] * (1 + data["eps_change"])
+        implied_spx_price = eps * pe
         gold_target = gold_targets[scenario]
-        implied_spx_price = earnings_input * pe
         crude_price = reference_prices["Crude"] * (0.9 if scenario == "Recession" else 1.2 if scenario == "Boom" else 1.0)
         bond_yield = reference_prices["10Y"] * (1.25 if scenario == "Boom" else 0.75 if scenario == "Recession" else 1.0)
 
@@ -99,13 +115,14 @@ if total_prob == 100:
     st.metric("Expected Portfolio Return", f"{portfolio_expected_return:.2%}")
     st.metric("Expected Final Portfolio Value", f"$ {portfolio_final_value:,.0f}")
 
-    st.subheader("Scenario Assumptions")
-    assumption_df = pd.DataFrame({
+    st.subheader("Scenario Assumptions Summary")
+    summary_df = pd.DataFrame({
         "Scenario": scenario_names,
-        "P/E Ratio": [pe_ratios[s] for s in scenario_names],
-        "SPX Price": [earnings_input * pe_ratios[s] for s in scenario_names],
+        "P/E Ratio": [scenario_data[s]["pe"] for s in scenario_names],
+        "Earnings Change": [f"{scenario_data[s]['eps_change']*100:.0f}%" for s in scenario_names],
+        "Implied SPX Price": [reference_prices["Trailing_EPS"] * (1 + scenario_data[s]["eps_change"]) * scenario_data[s]["pe"] for s in scenario_names],
         "Gold Price": [gold_targets[s] for s in scenario_names],
         "Crude Oil Price": [reference_prices["Crude"] * (0.9 if s == "Recession" else 1.2 if s == "Boom" else 1.0) for s in scenario_names],
         "10Y Yield": [reference_prices["10Y"] * (1.25 if s == "Boom" else 0.75 if s == "Recession" else 1.0) for s in scenario_names]
     })
-    st.dataframe(assumption_df.set_index("Scenario"))
+    st.dataframe(summary_df.set_index("Scenario"))
