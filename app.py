@@ -113,13 +113,22 @@ def infer_probabilities_from_macro(liq, fiscal, geo):
 
 # Apply auto probabilities if toggled
 if auto_prob_toggle:
-    inferred = infer_probabilities_from_macro(liquidity_index, fiscal_stimulus, geopolitical_risk)
-    probabilities = inferred.copy()
-    total_prob = sum(probabilities.values())
+    raw_probs = infer_probabilities_from_macro(liquidity_index, fiscal_stimulus, geopolitical_risk)
+    scaled = {k: round(v * 100 / sum(raw_probs.values())) for k, v in raw_probs.items()}
+    total_prob = sum(scaled.values())
+
     if total_prob != 100:
-        for k, v in probabilities.items():
-            probabilities[k] = round(v * 100 / total_prob)
-        total_prob = sum(probabilities.values())
+        diff = 100 - total_prob
+        max_key = max(scaled, key=scaled.get)
+        scaled[max_key] += diff
+    probabilities = scaled
+    total_prob = sum(probabilities.values())
+    diff = 100 - total_prob
+    if diff != 0:
+        # add/subtract the difference to the largest weight to make total 100
+        max_key = max(probabilities, key=probabilities.get)
+        probabilities[max_key] += diff
+    total_prob = sum(probabilities.values())
         diff = 100 - total_prob
         if diff != 0:
             key = list(probabilities.keys())[0]
