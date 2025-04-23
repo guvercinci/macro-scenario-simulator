@@ -39,10 +39,7 @@ def scenario_probabilities(auto, liq, fiscal, geo):
         remaining = 100 - sum([v for k, v in probs.items() if k != "Deflation"])
         probs["Deflation"] = max(min(remaining, 40), 0)
 
-            probs = {"Boom": 10, "Stagflation": 35, "Recession": 35, "Deflation": 20}
-        else:
-            probs = {s: 25 for s in names}
-
+            
         for s in names:
             st.sidebar.number_input(f"{s} % (auto)", 0, 100, probs[s], key=f"auto_{s}", disabled=True)
         return probs, True
@@ -95,7 +92,7 @@ def simulate(eps, spx, probs, scenarios, macro_mult, alloc, targets):
             if asset == "Stocks":
                 r = (implied_spx / spx) - 1
             elif asset == "Treasuries":
-                r = BOND_DURATION * (targets["10Y"] - targets["10Y"]) / 100
+                r = 0  # No change in bond yield, assuming flat environment; update if dynamic yield logic added
             elif asset == "Commodities":
                 r = 0.5 * ((targets["Crude"] / 80 - 1) + (targets["Gold"] / 2000 - 1))
             elif asset == "Gold":
