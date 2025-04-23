@@ -166,6 +166,11 @@ def price_gold(rt, vix, geo_score):
     return 2000*(1-rt*0.1) + vix*10 + geo_score*300
 
 def price_oil(inv, opec, pmi, geo_score):
+    """
+    *Prices crude oil by incorporating inventory changes, OPEC quota shocks, PMI-driven demand, and geo shocks.*
+    """
+    return 80 * (1 + pmi/100 - inv/100) + opec * 80 + geo_score * 50
+
     return 80*(1 + pmi/100 - inv/100) + opec*80 + geo_score*50
 
 def eps_proj(eps, gdp, inf, ratec, sharec):
@@ -241,8 +246,12 @@ def run():
     # 6. Valuation Anchors Comparison
     st.subheader("6. Valuation & Asset Price Anchors")
     gold_price = price_gold(rt, st.sidebar.number_input("VIX for Gold", 16), geo_score)
-    oil_price = price_oil(
+        oil_price = price_oil(
         st.sidebar.number_input("Oil Inv Change (%)", 0.0),
+        st.sidebar.slider("OPEC Quota", -1.0, 1.0, 0.0),
+        st.sidebar.number_input("Global PMI", 50.0),
+        geo_score
+    )", 0.0),
         st.sidebar.slider("OPEC Quota", -1.0, 1.0, 0.0),
         st.sidebar.number_input("Global PMI", 50.0),
         geo_score
