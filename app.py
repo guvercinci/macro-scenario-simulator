@@ -107,8 +107,18 @@ weighted_pe = sum(
     probabilities[s] / 100 * scenario_data[s]['pe']
     for s in scenario_names
 )
-spx_fair_value = weighted_eps * weighted_pe
-st.markdown(f"**Scenario-Weighted Fair Value (EPS × P/E):** {spx_fair_value:,.0f}")
+macro_pe_liquidity = liquidity_index * 0.10
+macro_pe_fiscal = fiscal_stimulus * 0.05
+macro_pe_geo = geopolitical_risk * -0.07
+macro_pe_multiplier = 1 + macro_pe_liquidity + macro_pe_fiscal + macro_pe_geo
+adjusted_weighted_pe = weighted_pe * macro_pe_multiplier
+spx_fair_value = weighted_eps * adjusted_weighted_pe
+st.markdown("**Fair SPX = EPS × P/E:**")
+st.markdown(f"→ Scenario-Weighted EPS = {weighted_eps:.2f}")
+st.markdown(f"→ Scenario-Weighted P/E = {weighted_pe:.2f}")
+st.markdown(f"→ Macro P/E Adjustment = 1 + {macro_pe_liquidity:.1%} (Liquidity) + {macro_pe_fiscal:.1%} (Fiscal) + {macro_pe_geo:.1%} (Geopolitical) = {macro_pe_multiplier:.3f}")
+st.markdown(f"→ Macro-Adjusted P/E = {weighted_pe:.2f} × {macro_pe_multiplier:.3f} = {adjusted_weighted_pe:.2f}")
+st.markdown(f"→ **Macro-Adjusted Fair Value = {weighted_eps:.2f} × {adjusted_weighted_pe:.2f} = {spx_fair_value:,.0f}**")
 
 macro_eps_multiplier = 1 + (liquidity_index * 0.05 + fiscal_stimulus * 0.05 - geopolitical_risk * 0.02)
 adjusted_weighted_eps = weighted_eps * macro_eps_multiplier
