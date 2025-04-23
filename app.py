@@ -28,7 +28,16 @@ trailing_pe = current_spx / trailing_eps
 st.markdown(f"**Calculated Trailing P/E Ratio:** {trailing_pe:.2f}")
 
 # 2. Macro backdrop and scenario probabilities
+st.markdown("""
+### Adjust Simulation Parameters
+Toggle automatic scenario assignment based on macro conditions.
+""")
+auto_prob_toggle = st.checkbox("Auto-adjust scenario probabilities based on macro inputs", value=False)
 col_a, col_b = st.columns([1, 2])
+
+if auto_prob_toggle:
+    probabilities = {k: 0 for k in ["Recession", "Stagflation", "Boom", "Deflation"]}
+    total_prob = 0
 with col_a:
     st.subheader("Scenario Probabilities")
     default_scenario_data = {
@@ -97,8 +106,7 @@ def infer_probabilities_from_macro(liq, fiscal, geo):
     else:
         return {"Boom": 25, "Stagflation": 25, "Recession": 25, "Deflation": 25}
 
-# Optional toggle
-auto_prob_toggle = st.checkbox("Auto-adjust scenario probabilities based on macro inputs")
+# Apply auto probabilities if toggled
 if auto_prob_toggle:
     inferred = infer_probabilities_from_macro(liquidity_index, fiscal_stimulus, geopolitical_risk)
     probabilities = inferred.copy()
