@@ -129,10 +129,10 @@ def run():
     bond_yield = nelson_siegel(rt)
 
     df_anchors=pd.DataFrame(
-        index=["Weighted EPS","Weighted P/E","Gold Price","Oil Price","10Y Yield"],
+        index=["Current SPX","Weighted EPS","Weighted P/E","Gold Price","Oil Price","10Y Yield"],
         data={
-            "Actual": [eps, spx/eps, a_gold, a_oil, a_10y/100],
-            "Model":  [weighted_eps, weighted_pe, gold_price, oil_price, bond_yield]
+            "Actual": [spx, eps, spx/eps, a_gold, a_oil, a_10y/100],
+            "Model":  [weighted_eps*0 + spx, weighted_eps, weighted_pe, gold_price, oil_price, bond_yield]
         }
     )
     st.table(df_anchors.style.format({"Actual":"{:.2f}","Model":"{:.2f}"}))
