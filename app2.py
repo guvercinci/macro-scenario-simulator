@@ -232,4 +232,4 @@ def run():
     ]) @ np.diag(vols)
     sims = simulate(alloc, ret_asset, cov)
     st.subheader("8. Portfolio MC Distribution")
-    st.line_chart(pd.Series(sims).rolling(50).mean()))
+    st.line_chart(pd.Series(sims).rolling(50).mean())
