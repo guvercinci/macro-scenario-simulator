@@ -208,8 +208,10 @@ def run():
     """
     # 1. Empirical backdrop
     liq, fiscal, geo, short_term_rate, m2_growth = macro_conditions()
-    # 2. Market inputs
-    eps, spx, china_tariff, russia_gas_cut = market_inputs()
+    # 2. Market inputs (including geo flashpoints)
+    eps, spx, geo_events = market_inputs()
+    # sum of geo flashpoint impacts
+    geo_flash = sum(geo_events.values())
     # 3. Regime probabilities
     regimes, probs = regimes_and_probs()
     specs = define_scenarios()
