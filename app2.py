@@ -86,12 +86,12 @@ if hist_file is not None:
 # === Sidebar: Market Inputs & Geo Flashpoints ===
 def market_inputs():
     st.sidebar.header("2. Market Inputs & Geo Flashpoints")
-    eps = st.sidebar.number_input("Trailing SPX Earnings (EPS)", 220.0)
-    spx = st.sidebar.number_input("Current SPX Index", 4500.0)
+    eps = st.sidebar.number_input("Trailing SPX Earnings (EPS)", value=220.0)
+    spx = st.sidebar.number_input("Current SPX Index", value=4500.0)
     st.sidebar.markdown("**Actual Asset Prices**")
-    a_gold = st.sidebar.number_input("Current Gold Price ($)", 1900.0)
-    a_oil = st.sidebar.number_input("Current Oil Price ($)", 75.0)
-    a_10y = st.sidebar.number_input("Current 10Y Yield (%)", 3.5)
+    a_gold = st.sidebar.number_input("Current Gold Price ($)", value=1900.0)
+    a_oil = st.sidebar.number_input("Current Oil Price ($)", value=75.0)
+    a_10y = st.sidebar.number_input("Current 10Y Yield (%)", value=3.5)
     st.sidebar.markdown("**Geo Flashpoint Impacts**")
     geo_events = {}
     for name in ["China–US Tariff Escalation", "Russia Gas Cutoff"]:
@@ -247,13 +247,13 @@ def run():
     st.subheader("6. Valuation & Asset Price Anchors")
     gold_price = price_gold(
         rt,
-        st.sidebar.number_input("VIX for Gold", 16.0),
+        st.sidebar.number_input("VIX for Gold", value=16.0),
         geo_score
     )
     oil_price = price_oil(
-        st.sidebar.number_input("Oil Inv Change (%)", 0.0),
+        st.sidebar.number_input("Oil Inv Change (%)", value=0.0),
         st.sidebar.slider("OPEC Quota", -1.0, 1.0, 0.0),
-        st.sidebar.number_input("Global PMI", 50.0),
+        st.sidebar.number_input("Global PMI", value=50.0),
         geo_score
     )
     bond_yield = nelson_siegel(rt)
