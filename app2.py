@@ -184,12 +184,13 @@ def run():
     sims=simulate(mu,cov)
     eq,gold,bond=sims.T
     cash=DEFAULT_CASH_YIELD
-    port=(df.loc[df.Asset=='Equities','Alloc'].values/ spx)*eq +
-         (df.loc[df.Asset=='Gold','Alloc'].values/2000)*gold +
-         (df.loc[df.Asset=='Fixed Income','Alloc'].values/100000)*bond +
-         (df.loc[df.Asset=='Cash','Alloc'].values/100000)*cash
+        # Calculate portfolio returns for each simulation
+    weights = df.set_index('Asset')['Pct'] / 100.0
+    port = (
+        weights['Equities'] * eq +
+        weights['Gold']       * gold +
+        weights['Fixed Income'] * bond +
+        weights['Cash']       * cash
+    )
 
     st.subheader("MC Return Distribution")
-    st.bar_chart(np.histogram(port,bins=50)[0])
-
-if __name__=='__main__': run()
