@@ -127,7 +127,9 @@ if auto_prob_toggle:
         total_prob = sum(probabilities.values())
     st.markdown(f"**Total Probability:** {total_prob:.1f}%")
     for k, v in probabilities.items():
-        st.markdown(f"**{k}:** {v}%")        st.warning("Check logic: inferred probabilities do not sum to 100%.")
+        st.markdown(f"**{k}:** {v}%")
+    if total_prob != 100:
+        st.warning("Check logic: inferred probabilities do not sum to 100%.")
 
 # --- END AUTO-IMPROVEMENT SECTION ---
 
