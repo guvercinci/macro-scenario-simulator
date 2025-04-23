@@ -109,8 +109,7 @@ weighted_pe = sum(
 )
 spx_fair_value = weighted_eps * weighted_pe
 st.markdown(f"**Scenario-Weighted Fair Value (EPS × P/E):** {spx_fair_value:,.0f}")
-
-    st.dataframe(pd.DataFrame(default_scenario_data).T.rename(columns={"pe": "P/E Ratio", "eps_change": "Earnings Change"}).style.format({"Earnings Change": "{:.0%}"}))
+st.dataframe(pd.DataFrame(default_scenario_data).T.rename(columns={"pe": "P/E Ratio", "eps_change": "Earnings Change"}).style.format({"Earnings Change": "{:.0%}"}))
 
 # 5. Portfolio allocations
 st.header("Adjust Portfolio Allocations")
