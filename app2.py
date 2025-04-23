@@ -20,20 +20,23 @@ def valuation_inputs():
 def macro_conditions():
     st.sidebar.header("Macro Backdrop")
     use_empirical = st.sidebar.checkbox("Use empirical macro inputs", value=True)
+    allow_override = st.sidebar.checkbox("Override empirical backdrop manually", value=False)
+
+    disabled_inputs = not allow_override
 
     if use_empirical:
-        st.sidebar.markdown("#### Empirical Inputs")
+                st.sidebar.markdown("#### Empirical Inputs for Liquidity")
         fed_balance_sheet = st.sidebar.number_input("Fed Balance Sheet (% of GDP)", value=35.0)
         short_term_rate = st.sidebar.number_input("Real Short-Term Rate (%)", value=1.5)
-        m2_growth = st.sidebar.number_input("M2 Growth YoY (%)", value=4.0)
+                m2_growth = st.sidebar.number_input("M2 Growth YoY (%)", value=4.0, disabled=disabled_inputs)
 
         deficit = st.sidebar.number_input("Federal Budget Deficit (% of GDP)", value=6.0)
         gov_spending = st.sidebar.number_input("Gov. Spending (% of GDP)", value=25.0)
-        transfer_payments = st.sidebar.number_input("Net Transfers (% of GDP)", value=10.0)
+                transfer_payments = st.sidebar.number_input("Net Transfers (% of GDP)", value=10.0, disabled=disabled_inputs)
 
         geo_risk_index = st.sidebar.number_input("Geopolitical Risk Index", value=120.0)
         vix_index = st.sidebar.number_input("VIX Volatility Index", value=20.0)
-        conflict_events = st.sidebar.number_input("Global Conflict Events (count)", value=30)
+                conflict_events = st.sidebar.number_input("Global Conflict Events (count)", value=30, disabled=disabled_inputs)
 
         # Normalize based on assumed historical ranges
         liquidity_components = [
@@ -57,10 +60,10 @@ def macro_conditions():
         ]
         geo = sum([min(max(c, 0), 1) for c in geo_components]) / len(geo_components)
 
-        st.sidebar.markdown("#### Derived Backdrop (0 to 1 scale)")
-        liq = st.sidebar.slider("Liquidity", 0.0, 1.0, liq, disabled=False)
-        fiscal = st.sidebar.slider("Fiscal Stimulus", 0.0, 1.0, fiscal, disabled=False)
-        geo = st.sidebar.slider("Geopolitical Risk", 0.0, 1.0, geo, disabled=False)
+                st.sidebar.markdown("#### Derived Macro Backdrop (0 to 1 scale)")
+                liq = st.sidebar.slider("Liquidity", 0.0, 1.0, liq, disabled=not allow_override)
+                fiscal = st.sidebar.slider("Fiscal Stimulus", 0.0, 1.0, fiscal, disabled=not allow_override)
+                geo = st.sidebar.slider("Geopolitical Risk", 0.0, 1.0, geo, disabled=not allow_override)
     else:
         liq = st.sidebar.slider("Liquidity", 0.0, 1.0, 0.5)
         fiscal = st.sidebar.slider("Fiscal Stimulus", 0.0, 1.0, 0.3)
