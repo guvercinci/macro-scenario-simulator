@@ -50,7 +50,7 @@ with col_a:
 
 with col_b:
     st.subheader("Global Macro Backdrop")
-st.caption("These sliders simulate monetary, fiscal, and geopolitical dynamics. Their values adjust asset class sensitivity based on Ray Dalio's macro playbook.")
+    st.caption("These sliders simulate monetary, fiscal, and geopolitical dynamics. Their values adjust asset class sensitivity based on Ray Dalio's macro playbook.")
     col3, col4, col5 = st.columns(3)
     with col3:
         liquidity_index = st.slider("Liquidity (0=Drained, 1=Flooded)", 0.0, 1.0, 0.5)
