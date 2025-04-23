@@ -116,11 +116,18 @@ if auto_prob_toggle:
     inferred = infer_probabilities_from_macro(liquidity_index, fiscal_stimulus, geopolitical_risk)
     probabilities = inferred.copy()
     total_prob = sum(probabilities.values())
+    if total_prob != 100:
+        for k, v in probabilities.items():
+            probabilities[k] = round(v * 100 / total_prob)
+        total_prob = sum(probabilities.values())
+        diff = 100 - total_prob
+        if diff != 0:
+            key = list(probabilities.keys())[0]
+            probabilities[key] += diff
+        total_prob = sum(probabilities.values())
     st.markdown(f"**Total Probability:** {total_prob:.1f}%")
     for k, v in probabilities.items():
-        st.markdown(f"**{k}:** {v}%")
-    if total_prob != 100:
-        st.warning("Check logic: inferred probabilities do not sum to 100%.")
+        st.markdown(f"**{k}:** {v}%")        st.warning("Check logic: inferred probabilities do not sum to 100%.")
 
 # --- END AUTO-IMPROVEMENT SECTION ---
 
