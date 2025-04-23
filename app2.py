@@ -108,6 +108,7 @@ def run_simulation(eps, spx, probs, scenarios, macro_mult, df, targets):
     }, fair_spx
 
 def main():
+    auto = st.sidebar.checkbox("Auto-adjust scenario probabilities", value=True)
     st.set_page_config(page_title="Macro Portfolio Simulator", layout="wide")
     st.title("Macro Scenario-Based Portfolio Simulator")
     st.caption("Simulate how portfolios perform across macro regimes—like a hedge fund would.")
@@ -115,7 +116,7 @@ def main():
     eps, spx = valuation_inputs()
     liquidity, fiscal, geo = macro_sliders()
     macro_mult = get_macro_multiplier(liquidity, fiscal, geo)
-    probs, valid = scenario_probabilities(auto=True, liquidity=liquidity, fiscal=fiscal, geo=geo)
+    probs, valid = scenario_probabilities(auto=auto, liquidity=liquidity, fiscal=fiscal, geo=geo)
     if not valid:
         st.stop()
     scenarios = get_scenario_data()
