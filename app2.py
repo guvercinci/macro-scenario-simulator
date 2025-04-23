@@ -106,6 +106,11 @@ def simulate(eps, spx, probs, scenarios, macro_mult, alloc, targets):
 
 def main():
     st.title("Macro Scenario-Based Portfolio Simulator")
+st.markdown("""
+This tool helps simulate how a diversified portfolio might respond across different macroeconomic scenarios.
+We combine scenario-weighted earnings (EPS) and valuation (P/E ratio), then apply macro adjustments to estimate SPX fair value.
+Asset class returns are then computed based on these conditions.
+""")
     st.caption("Test how your portfolio performs under macroeconomic scenarios.")
 
     eps, spx = valuation_inputs()
@@ -122,7 +127,13 @@ def main():
     alloc = portfolio_editor()
     results, fair_spx = simulate(eps, spx, probs, scenarios, macro_mult, alloc, targets)
 
-    st.subheader("Simulation Results")
+    st.subheader("Calculation Summary")
+st.markdown(f"**Weighted EPS:** {weighted_eps:.2f}  ")
+st.markdown(f"**Weighted P/E Ratio:** {weighted_pe:.2f}  ")
+st.markdown(f"**Macro Multiplier Applied:** {macro_mult:.3f}  ")
+st.markdown(f"**Fair SPX Estimate:** {fair_spx:,.0f}")
+
+st.subheader("Simulation Results")
     st.dataframe(results.style.format({
         "allocation": "$ {:,.0f}",
         "expected_dollar_return": "$ {:,.0f}",
