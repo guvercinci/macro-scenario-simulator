@@ -46,15 +46,15 @@ def macro_conditions():
     if use_emp:
         override = st.sidebar.checkbox("Override backdrop manually", False)
         disabled = not override
-        fed_bs = st.sidebar.number_input("Fed Balance Sheet (% GDP)", 38.0, disabled=disabled)  # Default ~38%, disabled=disabled)
-        short_rate = st.sidebar.number_input("Real Short-Term Rate (%)", 2.5, disabled=disabled)  # Default ~2.5%
-        m2 = st.sidebar.number_input("M2 Growth YoY (%)", 6.0, disabled=disabled)  # Default ~6%
-        deficit = st.sidebar.number_input("Budget Deficit (% GDP)", 5.0, disabled=disabled)  # Default ~5%
-        gov_spend = st.sidebar.number_input("Government Spending (% GDP)", 24.0, disabled=disabled)  # Default ~24%
-        transfers = st.sidebar.number_input("Net Transfers (% GDP)", 12.0, disabled=disabled)  # Default ~12%
-        geo_idx = st.sidebar.number_input("Geo Risk Index", 100.0, disabled=disabled)  # Default moderate risk
-        vix = st.sidebar.number_input("VIX Index", 16.0, disabled=disabled)  # Default ~16%
-        conflicts = st.sidebar.number_input("Conflict Events", 20, disabled=disabled)  # Default ~20 events
+        fed_bs = st.sidebar.number_input("Fed Balance Sheet (% GDP)", 38.0, disabled=disabled)
+        short_rate = st.sidebar.number_input("Real Short-Term Rate (%)", 2.5, disabled=disabled)
+        m2 = st.sidebar.number_input("M2 Growth YoY (%)", 6.0, disabled=disabled)
+        deficit = st.sidebar.number_input("Budget Deficit (% GDP)", 5.0, disabled=disabled)
+        gov_spend = st.sidebar.number_input("Government Spending (% GDP)", 24.0, disabled=disabled)
+        transfers = st.sidebar.number_input("Net Transfers (% GDP)", 12.0, disabled=disabled)
+        geo_idx = st.sidebar.number_input("Geo Risk Index", 100.0, disabled=disabled)
+        vix = st.sidebar.number_input("VIX Index", 16.0, disabled=disabled)
+        conflicts = st.sidebar.number_input("Conflict Events", 20, disabled=disabled)
         liq = normalize_liquidity(fed_bs, short_rate, m2)
         fiscal = normalize_fiscal(deficit, gov_spend, transfers)
         geo = normalize_geo(geo_idx, vix, conflicts)
@@ -62,21 +62,21 @@ def macro_conditions():
         fiscal = st.sidebar.slider("Fiscal Stimulus", 0.0, 1.0, fiscal, disabled=not override)
         geo = st.sidebar.slider("Geo Risk", 0.0, 1.0, geo, disabled=not override)
     else:
-        short_rate, m2 = 1.5, 4.0
+        short_rate, m2 = 2.5, 6.0
         liq = st.sidebar.slider("Liquidity", 0.0, 1.0, 0.5)
         fiscal = st.sidebar.slider("Fiscal Stimulus", 0.0, 1.0, 0.3)
         geo = st.sidebar.slider("Geo Risk", 0.0, 1.0, 0.1)
     return liq, fiscal, geo, short_rate, m2
 
-# === Sidebar: Market Inputs & Flashpoints ===
+# === Sidebar: Market Inputs & Geo Flashpoints ===
 def market_inputs():
     st.sidebar.header("2. Market Inputs & Geo Flashpoints")
-    eps = st.sidebar.number_input("Trailing SPX Earnings (EPS)", 220.0)  # Default ~$220
-    spx = st.sidebar.number_input("Current SPX Index", 4500.0)  # Default ~$4500
+    eps = st.sidebar.number_input("Trailing SPX Earnings (EPS)", 220.0)
+    spx = st.sidebar.number_input("Current SPX Index", 4500.0)
     st.sidebar.markdown("**Actual Asset Prices**")
-    a_gold = st.sidebar.number_input("Current Gold Price ($)", 1900.0)  # Default ~$1900
-    a_oil = st.sidebar.number_input("Current Oil Price ($)", 75.0)  # Default ~$75
-    a_10y = st.sidebar.number_input("Current 10Y Yield (%)", 3.5)  # Default ~3.5%
+    a_gold = st.sidebar.number_input("Current Gold Price ($)", 1900.0)
+    a_oil = st.sidebar.number_input("Current Oil Price ($)", 75.0)
+    a_10y = st.sidebar.number_input("Current 10Y Yield (%)", 3.5)
     st.sidebar.markdown("**Geo Flashpoint Impacts**")
     geo_events = {}
     for name in ["China–US Tariff Escalation", "Russia Gas Cutoff"]:
@@ -103,6 +103,7 @@ def regimes_and_probs():
         st.stop()
     return regimes, probs
 
+
 def nelson_siegel(rt):
     return 1 - ((1-np.exp(-rt))/rt) + 0.5*(((1-np.exp(-rt))/rt)-np.exp(-rt))
 
@@ -115,18 +116,18 @@ def price_oil(inv, opec, pmi, geo_score):
 def eps_proj(eps, gdp, inf, ratec, sharec):
     rev = eps*(1+gdp/100)
     marg = rev*(1-inf*0.005-ratec*0.01)
-    # debt service cost
     debt_cost = ratec * 0.1
     floor = eps * 0.125
     return max(marg - debt_cost, floor)*(1-sharec)
 
 def define_scenarios():
     return {
-        'Expansion':   {'pe_mul':1.2,'eps_d':+0.10},
-        'Recession':   {'pe_mul':0.8,'eps_d':-0.25},
-        'Stagflation': {'pe_mul':0.9,'eps_d':-0.15},
-        'Deflation':   {'pe_mul':0.85,'eps_d':-0.05}
+        'Expansion':   {'pe_mul':1.2},
+        'Recession':   {'pe_mul':0.8},
+        'Stagflation': {'pe_mul':0.9},
+        'Deflation':   {'pe_mul':0.85}
     }
+
 def macro_mult(liq, fiscal, geo):
     impact = liq*0.25 + fiscal*0.2 - geo*0.3
     return 1 + min(MAX_MACRO_PE_IMPACT, impact)
@@ -134,10 +135,10 @@ def macro_mult(liq, fiscal, geo):
 # === Portfolio Editor ===
 def portfolio_editor():
     st.subheader("4. Portfolio Allocation")
-    assets=['Equities','Gold','Oil','Bonds','Cash']
-    df_init=pd.DataFrame({'Asset':assets,'Pct':[40,20,20,15,5]})
-    df = st.data_editor(df_init,use_container_width=True) if hasattr(st,'data_editor') else st.experimental_data_editor(df_init,use_container_width=True)
-    if abs(df['Pct'].sum()-100)>0.1:
+    assets = ['Equities','Gold','Oil','Bonds','Cash']
+    df_init = pd.DataFrame({'Asset': assets, 'Pct': [40,20,20,15,5]})
+    df = st.data_editor(df_init, use_container_width=True) if hasattr(st,'data_editor') else st.experimental_data_editor(df_init, use_container_width=True)
+    if abs(df['Pct'].sum() - 100) > 0.1:
         st.error("Portfolio weights must sum to 100%.")
         st.stop()
     return df, df['Pct'].values/100
@@ -153,69 +154,62 @@ def run():
     eps, spx, a_gold, a_oil, a_10y, geo_events = market_inputs()
     geo_score = sum(geo_events.values())
     regimes, probs = regimes_and_probs()
-    specs = define_scenarios()
 
-    # Scenario drivers & correlations
+    # Scenario Drivers & Correlations
     st.sidebar.header("5. Scenario Drivers & Correlations")
-    values, rets, eps_list, pe_list, corr_vals = [], [], [], [], {}
-    # === Scenario Drivers & Correlations ===
-    st.sidebar.header("5. Scenario Drivers & Correlations")
-    # Default scenario inputs per regime
     gdp_defaults = {'Expansion': 3.0, 'Recession': -1.0, 'Stagflation': 1.0, 'Deflation': -0.5}
     rate_defaults = {'Expansion': 0.2, 'Recession': 1.0, 'Stagflation': 0.8, 'Deflation': -0.2}
     share_defaults = {'Expansion': 0.0, 'Recession': 0.02, 'Stagflation': 0.0, 'Deflation': 0.0}
     values, rets, eps_list, pe_list, corr_vals = [], [], [], [], {}
     for reg in regimes:
         with st.sidebar.expander(reg, True):
-            # Scenario-specific default inputs
-            gdp = st.number_input(f"GDP Growth {reg}%", gdp_defaults.get(reg, 0.0), key=f"gdp{reg}")
-            ratec = st.number_input(f"Rate Shock {reg}%", rate_defaults.get(reg, 0.0), key=f"rs{reg}")
-            sharec = st.number_input(f"Share Chg {reg}%", share_defaults.get(reg, 0.0), key=f"sc{reg}")
+            gdp = st.number_input(f"GDP Growth {reg}%", gdp_defaults[reg], key=f"gdp{reg}")
+            ratec = st.number_input(f"Rate Shock {reg}%", rate_defaults[reg], key=f"rs{reg}")
+            sharec = st.number_input(f"Share Chg {reg}%", share_defaults[reg], key=f"sc{reg}")
             corr_vals[reg] = st.slider(f"Eq-Gold Corr {reg}", -1.0, 1.0, -0.2, key=f"c{reg}")
-        eps_f = eps_proj(eps, gdp, m2, ratec, sharec)(eps, gdp, m2, ratec, sharec)
+        eps_f = eps_proj(eps, gdp, m2, ratec, sharec)
         pe_f = pe_from_real(rt) * macro_mult(liq, fiscal, geo)
         fair_spx_reg = eps_f * pe_f
         values.append(fair_spx_reg)
-        rets.append(fair_spx_reg/spx - 1)
+        rets.append(fair_spx_reg / spx - 1)
         eps_list.append(eps_f)
         pe_list.append(pe_f)
 
-    weighted_eps = sum(probs[r]/100 * eps_list[i] for i, r in enumerate(regimes))
-    weighted_pe  = sum(probs[r]/100 * pe_list[i] for i, r in enumerate(regimes))
+    weighted_eps = sum(probs[r]/100 * eps_list[i] for i,r in enumerate(regimes))
+    weighted_pe  = sum(probs[r]/100 * pe_list[i]  for i,r in enumerate(regimes))
     fair_spx = weighted_eps * weighted_pe
 
     # Display regime valuation table
     dfv = pd.DataFrame({'Regime': regimes, 'Fair SPX': values, 'Return%': rets, 'P%': [probs[r] for r in regimes]})
     st.write(dfv)
 
-    # Valuation & Asset Price Anchors Comparison
+    # 6. Valuation Anchors Comparison
     st.subheader("6. Valuation & Asset Price Anchors")
     gold_price = price_gold(rt, st.sidebar.number_input("VIX for Gold", 16), geo_score)
     oil_price = price_oil(
-        st.sidebar.number_input("Oil Inv Change (%), 0.0),
-        st.sidebar.slider("OPEC Quota", -1.0, 1.0, 0.0)  # Default no shock),
+        st.sidebar.number_input("Oil Inv Change (%)", 0.0),
+        st.sidebar.slider("OPEC Quota", -1.0, 1.0, 0.0),
         st.sidebar.number_input("Global PMI", 50.0),
         geo_score
     )
     bond_yield = nelson_siegel(rt)
 
-    anchors = {
+    df_anchors = pd.DataFrame({
         'Metric': ["Current SPX","Weighted EPS","Weighted P/E","Gold","Oil","10Y Yield"],
         'Actual': [spx, eps, spx/eps, a_gold, a_oil, a_10y/100],
         'Model':  [fair_spx, weighted_eps, weighted_pe, gold_price, oil_price, bond_yield]
-    }
-    df_anchors = pd.DataFrame(anchors)
-    st.table(df_anchors.set_index('Metric').style.format({"Actual":"{:.2f}","Model":"{:.2f}"}))
+    }).set_index('Metric')
+    st.table(df_anchors.style.format({"Actual":"{:.2f}","Model":"{:.2f}"}))
 
-    # Portfolio & Expected Return
+    # 7. Portfolio & Expected Return
     dfp, alloc = portfolio_editor()
-    exp_eq = sum(probs[r]/100 * rets[i] for i, r in enumerate(regimes))
+    exp_eq = sum(probs[r]/100 * rets[i] for i,r in enumerate(regimes))
     ret_asset = np.array([exp_eq, gold_price/a_gold-1, oil_price/a_oil-1, bond_yield, DEFAULT_CASH_YIELD])
     exp_return = alloc @ ret_asset
     st.subheader("7. Expected Portfolio Return")
     st.metric("Expected Return", f"{exp_return:.2%}")
 
-    # Monte Carlo Simulation & Distribution
+    # 8. Monte Carlo Simulation & Distribution
     vols = np.array([0.15,0.10,0.12,0.08,0.00])
     avg_corr = np.mean(list(corr_vals.values()))
     cov = np.diag(vols) @ np.array([
