@@ -90,7 +90,7 @@ def market_inputs():
     spx = st.sidebar.number_input("Current SPX Index", value=4500.0)
     st.sidebar.markdown("**Actual Asset Prices**")
     a_gold = st.sidebar.number_input("Current Gold Price ($)", value=1900.0)
-    a_oil = st.sidebar.number_input("Current Oil Price ($)", value=75.0)
+    a_oil = st.sidebar.number_input("Current Oil Price ($)", min_value=0.0, value=75.0)
     a_10y = st.sidebar.number_input("Current 10Y Yield (%)", value=3.5)
     st.sidebar.markdown("**Geo Flashpoint Impacts**")
     geo_events = {}
