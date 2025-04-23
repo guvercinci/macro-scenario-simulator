@@ -127,10 +127,21 @@ def macro_targets(liq, fiscal, geo):
 
 def portfolio_editor():
     st.subheader("Portfolio Allocation")
-    return st.data_editor(pd.DataFrame({
-        "symbol": ["Stocks", "Treasuries", "Commodities", "Cash", "Gold", "SPY Put Spread"],
-        "allocation": [250000, 30000, 20000, 50000, 10000, 10000]
-    }), use_container_width=True)
+    preset = st.selectbox("Choose a Portfolio Preset:", ["Balanced (60/40)", "Aggressive Growth", "Defensive Hedge", "Custom"], index=0)
+
+    if preset == "Balanced (60/40)":
+        data = {"symbol": ["Equities", "Fixed Income", "Cash", "Commodities", "Gold", "Hedging Instruments"], "allocation_pct": [60, 30, 5, 2.5, 2.5, 0]}
+    elif preset == "Aggressive Growth":
+        data = {"symbol": ["Equities", "Fixed Income", "Cash", "Commodities", "Gold", "Hedging Instruments"], "allocation_pct": [80, 10, 2, 5, 2, 1]}
+    elif preset == "Defensive Hedge":
+        data = {"symbol": ["Equities", "Fixed Income", "Cash", "Commodities", "Gold", "Hedging Instruments"], "allocation_pct": [30, 30, 10, 10, 10, 10]}
+    else:
+        data = {"symbol": ["Equities", "Fixed Income", "Cash", "Commodities", "Gold", "Hedging Instruments"], "allocation_pct": [50, 30, 10, 5, 3, 2]}
+
+    df = pd.DataFrame(data)
+    df = st.data_editor(df, num_rows="fixed", use_container_width=True, key="portfolio_editor")
+    df["allocation"] = df["allocation_pct"] / 100 * 100000
+    return df[["symbol", "allocation"]], use_container_width=True)
 
 def simulate(eps, spx, probs, scenarios, macro_mult, alloc, targets):
     total = alloc["allocation"].sum()
@@ -143,9 +154,9 @@ def simulate(eps, spx, probs, scenarios, macro_mult, alloc, targets):
         implied_spx = eps * (1 + scenarios[s]['eps_change']) * scenarios[s]['pe'] * macro_mult
         for i, row in alloc.iterrows():
             asset = row["symbol"]
-            if asset == "Stocks":
+            if asset == "Equities":
                 r = (implied_spx / spx) - 1
-            elif asset == "Treasuries":
+            elif asset == "Fixed Income":
                 r = 0  # No change in bond yield, assuming flat environment; update if dynamic yield logic added
             elif asset == "Commodities":
                 r = 0.5 * ((targets["Crude"] / 80 - 1) + (targets["Gold"] / 2000 - 1))
@@ -153,7 +164,7 @@ def simulate(eps, spx, probs, scenarios, macro_mult, alloc, targets):
                 r = (targets["Gold"] / 2000) - 1
             elif asset == "Cash":
                 r = DEFAULT_CASH_YIELD
-            elif asset == "SPY Put Spread":
+            elif asset == "Hedging Instruments":
                 fall = (spx - implied_spx) / spx if spx != 0 else 0
                 r = min(max(fall, 0), 0.2) * 3
             else:
