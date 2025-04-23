@@ -118,7 +118,6 @@ if total_prob == 100:
         eps = reference_prices["Trailing_EPS"] * (1 + scenario_data[scenario]["eps_change"])
         implied_spx_price = eps * pe
 
-        # Apply macro multipliers
         liquidity_boost = 1 + reference_prices["Liquidity Index"] * 0.1
         stimulus_boost = 1 + reference_prices["Fiscal Stimulus"] * 0.05
         geopolitical_drag = 1 - reference_prices["Geopolitical Risk"] * 0.05
@@ -150,25 +149,23 @@ if total_prob == 100:
     df["expected_dollar_return"] = df["allocation"] * df["expected_return"]
     df["final_value"] = df["allocation"] + df["expected_dollar_return"]
 
-        st.header("Simulation Results")
+    st.header("Simulation Results")
     st.caption("Results shown below reflect the impact of scenario probabilities, macro environment, and your portfolio allocation. Grouped into strategic exposures:")
 
-# Categorize exposure types
-risk_buckets = {
-    "Growth Risk": ["Stocks"],
-    "Inflation Hedge": ["Commodities", "Gold"],
-    "Deflation Hedge": ["Treasuries", "SPY Put Spread"],
-    "Neutral": ["Cash"]
-}
+    risk_buckets = {
+        "Growth Risk": ["Stocks"],
+        "Inflation Hedge": ["Commodities", "Gold"],
+        "Deflation Hedge": ["Treasuries", "SPY Put Spread"],
+        "Neutral": ["Cash"]
+    }
 
-# Add exposure category to dataframe
-def classify_risk(symbol):
-    for bucket, symbols in risk_buckets.items():
-        if symbol in symbols:
-            return bucket
-    return "Other"
+    def classify_risk(symbol):
+        for bucket, symbols in risk_buckets.items():
+            if symbol in symbols:
+                return bucket
+        return "Other"
 
-df["Exposure Type"] = df["symbol"].apply(classify_risk)
-        st.dataframe(df.style.format({"allocation": "$ {:,.0f}", "expected_dollar_return": "$ {:,.0f}", "final_value": "$ {:,.0f}", "expected_return": "{:.2%}"}))
-        st.metric("Expected Portfolio Return", f"{df['expected_dollar_return'].sum() / df['allocation'].sum():.2%}") / df['allocation'].sum():.2%}")
-        st.metric("Expected Final Portfolio Value", f"$ {df['final_value'].sum():,.0f}"):,.0f}")
+    df["Exposure Type"] = df["symbol"].apply(classify_risk)
+    st.dataframe(df.style.format({"allocation": "$ {:,.0f}", "expected_dollar_return": "$ {:,.0f}", "final_value": "$ {:,.0f}", "expected_return": "{:.2%}"}))
+    st.metric("Expected Portfolio Return", f"{df['expected_dollar_return'].sum() / df['allocation'].sum():.2%}")
+    st.metric("Expected Final Portfolio Value", f"$ {df['final_value'].sum():,.0f}")
