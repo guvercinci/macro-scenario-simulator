@@ -125,10 +125,17 @@ Asset class returns are then computed based on these conditions.
     results, fair_spx, weighted_eps, weighted_pe = simulate(eps, spx, probs, scenarios, macro_mult, alloc, targets)
 
     st.subheader("Calculation Summary")
-    st.markdown(f"**Weighted EPS:** {weighted_eps:.2f}")
-    st.markdown(f"**Weighted P/E Ratio:** {weighted_pe:.2f}")
-    st.markdown(f"**Macro Multiplier Applied:** {macro_mult:.3f}")
-    st.markdown(f"**Fair SPX Estimate:** {fair_spx:,.0f}")
+    trailing_pe = spx / eps if eps != 0 else 0
+    st.markdown(f"**1. Trailing P/E (SPX / EPS):** {spx:,.0f} / {eps:.2f} = {trailing_pe:.2f}")
+    st.markdown(f"**2. Weighted Forward EPS:** {weighted_eps:.2f} (based on scenario-weighted earnings)")
+    st.markdown(f"**3. Weighted P/E:** {weighted_pe:.2f} (based on scenario-weighted multiples)")
+    st.markdown(f"**4. Macro Multiplier:** {macro_mult:.3f} (adjusting for liquidity, stimulus, and risk)")
+    st.markdown(f"**5. Fair SPX Estimate:** {weighted_eps:.2f} × {weighted_pe:.2f} × {macro_mult:.3f} = {fair_spx:,.0f}")
+
+    st.subheader("Macro-Adjusted Asset Targets")
+    st.markdown(f"- **Gold Target Price:** ${targets['Gold']:.2f}")
+    st.markdown(f"- **Crude Oil Target Price:** ${targets['Crude']:.2f}")
+    st.markdown(f"- **10-Year Yield Estimate:** {targets['10Y']:.2f}%")
 
     st.subheader("Simulation Results")
     st.dataframe(results.style.format({
