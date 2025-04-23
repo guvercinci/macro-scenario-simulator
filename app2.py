@@ -156,7 +156,7 @@ def run():
         'Asset': ['Equities', 'Gold', 'Bonds', 'Cash'],
         'AllocationPct': [50, 20, 20, 10]
     })
-    df = st.experimental_data_editor(df, use_container_width=True)
+    df = st.data_editor(df, use_container_width=True)
     total_pct = df['AllocationPct'].sum()
     if total_pct != 100:
         st.error("Total allocation must equal 100%.")
