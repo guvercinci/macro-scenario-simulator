@@ -177,6 +177,7 @@ def run():
     cov=np.diag(vols)@np.array([[1,avg_corr,0,0,0],[avg_corr,1,0,0,0],[0,0,1,0,0],[0,0,0,1,0],[0,0,0,0,1]])@np.diag(vols)
     sims=simulate(alloc,ret_asset,cov)
     st.subheader("Portfolio MC Distribution")
+    st.markdown("_Shows the simulated distribution of portfolio returns over many Monte Carlo runs, highlighting expected performance and tail risk._")
     st.line_chart(pd.Series(sims).rolling(50).mean())
 
 if __name__=='__main__': run()
