@@ -211,7 +211,7 @@ Asset class returns are then computed based on these conditions.
     st.markdown(f"**1. Trailing P/E (SPX / EPS):** {spx:,.0f} / {eps:.2f} = {trailing_pe:.2f}")
     st.markdown("_This shows how expensive the market is relative to trailing earnings._")
     st.markdown(f"**2. Weighted Forward EPS:** {weighted_eps:.2f}")
-    st.markdown("_Calculated as the probability-weighted average of projected scenario earnings._")
+    st.markdown("_This forecasts expected earnings based on how likely each scenario is to occur._")
     st.markdown(f"**3. Weighted P/E:** {weighted_pe:.2f}")
     st.markdown("_This is the average scenario-based valuation multiple, weighted by macro scenario probabilities._")
     st.markdown(f"**4. Macro Multiplier:** {macro_mult:.3f}")
