@@ -56,3 +56,37 @@ st.subheader("Macro-Adjusted Asset Anchors")
 st.write(f"**Gold Price:** ${adjusted_gold:.2f}")
 st.write(f"**Crude Oil Price:** ${adjusted_crude:.2f}")
 st.write(f"**10-Year Yield:** {adjusted_10y:.2f}%")
+
+reference_prices = {
+    "SPX": current_spx,
+    "Gold": adjusted_gold,
+    "Crude": adjusted_crude,
+    "10Y": adjusted_10y,
+    "Trailing_EPS": trailing_eps,
+    "Liquidity Index": liquidity_index,
+    "Fiscal Stimulus": fiscal_stimulus,
+    "Geopolitical Risk": geopolitical_risk
+}
+
+# Scenario assumptions
+st.header("Scenario Assumptions")
+default_scenario_data = {
+    "Recession": {"pe": 14, "eps_change": -0.20},
+    "Stagflation": {"pe": 15, "eps_change": -0.10},
+    "Boom": {"pe": 20, "eps_change": 0.15},
+    "Deflation": {"pe": 17, "eps_change": -0.05}
+}
+
+use_custom_assumptions = st.checkbox("Manually edit P/E and EPS change assumptions", value=False)
+scenario_names = list(default_scenario_data.keys())
+if use_custom_assumptions:
+    assumption_input = pd.DataFrame(default_scenario_data).T.reset_index().rename(columns={"index": "Scenario", "pe": "P/E Ratio", "eps_change": "Earnings Change (%)"})
+    assumption_input["Earnings Change (%)"] *= 100
+    edited_assumptions = st.data_editor(assumption_input, num_rows="fixed", use_container_width=True)
+    scenario_data = {
+        row["Scenario"]: {"pe": row["P/E Ratio"], "eps_change": row["Earnings Change (%)"] / 100}
+        for _, row in edited_assumptions.iterrows()
+    }
+else:
+    scenario_data = default_scenario_data
+    st.dataframe(pd.DataFrame(default_scenario_data).T.rename(columns={"pe": "P/E Ratio", "eps_change": "Earnings Change"}).style.format({"Earnings Change": "{:.0%}"}))
