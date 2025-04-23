@@ -116,7 +116,6 @@ spx_fair_value = weighted_eps * adjusted_weighted_pe
 st.markdown("**Fair SPX = EPS × P/E:**")
 st.markdown(f"→ Scenario-Weighted EPS = {weighted_eps:.2f}")
 st.markdown(f"→ Scenario-Weighted P/E = {weighted_pe:.2f}")
-st.markdown(f"→ Macro P/E Adjustment = 1 + {macro_pe_liquidity:.1%} (Liquidity) + {macro_pe_fiscal:.1%} (Fiscal) + {macro_pe_geo:.1%} (Geopolitical) = {macro_pe_multiplier:.3f}")
 st.markdown(f"→ Macro-Adjusted P/E = {weighted_pe:.2f} × {macro_pe_multiplier:.3f} = {adjusted_weighted_pe:.2f}")
 st.markdown(f"→ **Macro-Adjusted Fair Value = {weighted_eps:.2f} × {adjusted_weighted_pe:.2f} = {spx_fair_value:,.0f}**")
 
@@ -124,8 +123,6 @@ st.markdown(f"→ **Macro-Adjusted Fair Value = {weighted_eps:.2f} × {adjusted_
 st.markdown(f"**Fair SPX = EPS × P/E:**")
 st.markdown(f"→ Scenario-Weighted EPS = {weighted_eps:.2f}")
 st.markdown(f"→ Macro P/E Adjustment = 1 + {macro_eps_liquidity:.1%} (Liquidity) + {macro_eps_fiscal:.1%} (Fiscal) + {macro_eps_geo:.1%} (Geopolitical) = {macro_eps_multiplier:.3f}")
-st.markdown(f"→ **Macro-Adjusted EPS = {weighted_eps:.2f} × {macro_eps_multiplier:.3f} = {adjusted_weighted_eps:.2f}**")
-st.markdown(f"→ **Macro-Adjusted EPS = {weighted_eps:.2f} × {macro_eps_multiplier:.3f} = {adjusted_weighted_eps:.2f}**")
 
 # Show component breakdown
 with st.expander("See Fair Value Calculation Breakdown"):
