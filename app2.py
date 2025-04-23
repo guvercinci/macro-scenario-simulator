@@ -1,14 +1,16 @@
-# app.py — Streamlit Macro Scenario-Based Portfolio Simulator (Restored Version)
+# app.py — Streamlit Macro Scenario-Based Portfolio Simulator (Fixed and Explained)
 
 import streamlit as st
 import pandas as pd
 
 st.set_page_config(page_title="Macro Portfolio Simulator", layout="wide")
 
+# === Constants ===
 MAX_MACRO_PE_IMPACT = 0.6
 DEFAULT_CASH_YIELD = 0.04
 BOND_DURATION = 7
 
+# === Input Functions ===
 def valuation_inputs():
     st.sidebar.header("Market Inputs")
     eps = st.sidebar.number_input("Trailing SPX Earnings (EPS)", value=200.0)
@@ -37,6 +39,7 @@ def macro_conditions():
         vix_index = st.sidebar.number_input("VIX Volatility Index", value=20.0, disabled=disabled_inputs)
         conflict_events = st.sidebar.number_input("Global Conflict Events (count)", value=30, disabled=disabled_inputs)
 
+        # Normalize to 0–1
         liquidity_components = [
             (fed_balance_sheet - 15) / (45 - 15),
             max(min((5 - short_term_rate) / 5, 1), 0),
@@ -68,7 +71,36 @@ def macro_conditions():
         fiscal = st.sidebar.slider("Fiscal Stimulus", 0.0, 1.0, 0.3)
         geo = st.sidebar.slider("Geopolitical Risk", 0.0, 1.0, 0.1)
 
-    return liq, fiscal, geo, short_term_rate, m2_growth
+    return liq, fiscal, geo
+
+def scenario_probabilities(auto, liq, fiscal, geo):
+    st.sidebar.header("Scenario Probabilities")
+    names = ["Recession", "Stagflation", "Boom", "Deflation"]
+
+    if auto:
+        score = liq * 0.4 + fiscal * 0.3 - geo * 0.3
+        probs = {
+            "Boom": max(min(int(30 + score * 100), 60), 5),
+            "Stagflation": max(min(int(25 + geo * 30 - liq * 10), 45), 5),
+            "Recession": max(min(int(25 + (0.5 - liq) * 40), 50), 5),
+            "Deflation": 100  # placeholder, will be balanced below
+        }
+        remaining = 100 - sum([v for k, v in probs.items() if k != "Deflation"])
+        probs["Deflation"] = max(min(remaining, 40), 0)
+
+            
+        for s in names:
+            st.sidebar.number_input(f"{s} % (auto)", 0, 100, probs[s], key=f"auto_{s}", disabled=True)
+        return probs, True
+
+    else:
+        probs = {}
+        total = 0
+        for s in names:
+            p = st.sidebar.number_input(f"{s} %", 0, 100, 25, key=f"manual_{s}")
+            probs[s] = p
+            total += p
+        return (probs, total == 100)
 
 def default_scenarios():
     return {
@@ -79,125 +111,135 @@ def default_scenarios():
     }
 
 def macro_multiplier(liq, fiscal, geo):
-    liquidity_impact = liq * 0.25
-    fiscal_impact = fiscal * 0.2
-    geo_impact = -geo * 0.3
-    return 1 + min(MAX_MACRO_PE_IMPACT, liquidity_impact + fiscal_impact + geo_impact)
+    # Edge-case aware macro multiplier
+    liquidity_impact = liq * 0.25  # larger upward push when fully flooded
+    fiscal_impact = fiscal * 0.2   # stronger multiplier when stimulus is high
+    geo_impact = -geo * 0.3        # more negative impact if geopolitical risk is high
+    combined = liquidity_impact + fiscal_impact + geo_impact
+    return 1 + min(MAX_MACRO_PE_IMPACT, combined)
 
-def macro_targets(liq, fiscal, geo, short_term_rate=1.5, m2_growth=4.0):
-    gold_base = 2000
+def macro_targets(liq, fiscal, geo, short_term_rate=1.5, m2_growth=4.0):  # enhanced gold logic
+    gold_base = 2000  # Updated to reflect a more current market baseline
     real_rate_factor = max(0, (3 - short_term_rate)) * 0.25
     m2_factor = max(0, (m2_growth - 5)) * 0.10
-    geo_factor = geo * 0.4
+    geo_factor = geo * 0.4  # reduced impact to avoid overestimating gold in neutral conditions
     gold_price = gold_base * (1 + real_rate_factor + m2_factor + geo_factor)
-
-    crude_price = 80 * (1 + fiscal * 0.2 + geo * 0.3 + liq * 0.1)
-    bond_yield = 4.0 * (1 - liq * 0.05 - geo * 0.05 + fiscal * 0.05)
 
     return {
         "Gold": gold_price,
-        "Crude": crude_price,
-        "10Y": bond_yield
+        "Crude": 80 * (1 + fiscal * 0.1),
+        "10Y": 4.0 * (1 - liq * 0.05 - geo * 0.05 + fiscal * 0.05),
     }
-
-def scenario_probabilities():
-    st.sidebar.header("Scenario Probabilities")
-    probs = {}
-    total = 0
-    for scenario in ["Recession", "Stagflation", "Boom", "Deflation"]:
-        val = st.sidebar.slider(f"{scenario} Probability (%)", 0, 100, 25)
-        probs[scenario] = val
-        total += val
-    st.sidebar.markdown(f"**Total Probability: {total}%**")
-    if total != 100:
-        st.sidebar.error("Total must equal 100%")
-        st.stop()
-    return probs
 
 def portfolio_editor():
+    equity_beta = st.sidebar.slider("Equity Beta (vs SPX)", min_value=0.5, max_value=2.0, value=1.0, step=0.1, help="Set how sensitive Equities are to SPX changes. 1.0 = market beta")
     st.subheader("Portfolio Allocation")
     portfolio_size = st.number_input("Total Portfolio Size ($)", value=100000, step=10000)
-    equity_beta = st.sidebar.slider("Equity Beta (vs SPX)", 0.5, 2.0, 1.0, step=0.1)
-    preset = st.selectbox("Portfolio Preset", ["Balanced", "Aggressive", "Defensive", "Custom"], index=0)
+    preset = st.selectbox("Choose a Portfolio Preset:", ["Balanced (60/40)", "Aggressive Growth", "Defensive Hedge", "Custom"], index=0)
 
-    presets = {
-        "Balanced": [60, 30, 5, 3, 2, 0],
-        "Aggressive": [80, 10, 2, 5, 2, 1],
-        "Defensive": [30, 30, 10, 10, 10, 10],
-        "Custom": [50, 30, 10, 5, 3, 2]
-    }
-    names = ["Equities", "Fixed Income", "Cash", "Commodities", "Gold", "Hedging Instruments"]
-    df = pd.DataFrame({"symbol": names, "allocation_pct": presets[preset]})
-    df = st.data_editor(df, num_rows="fixed", use_container_width=True)
+    if preset == "Balanced (60/40)":
+        data = {"symbol": ["Equities", "Fixed Income", "Cash", "Commodities", "Gold", "Hedging Instruments"], "allocation_pct": [60, 30, 5, 2.5, 2.5, 0]}
+    elif preset == "Aggressive Growth":
+        data = {"symbol": ["Equities", "Fixed Income", "Cash", "Commodities", "Gold", "Hedging Instruments"], "allocation_pct": [80, 10, 2, 5, 2, 1]}
+    elif preset == "Defensive Hedge":
+        data = {"symbol": ["Equities", "Fixed Income", "Cash", "Commodities", "Gold", "Hedging Instruments"], "allocation_pct": [30, 30, 10, 10, 10, 10]}
+    else:
+        data = {"symbol": ["Equities", "Fixed Income", "Cash", "Commodities", "Gold", "Hedging Instruments"], "allocation_pct": [50, 30, 10, 5, 3, 2]}
+
+    df = pd.DataFrame(data)
+    df = st.data_editor(df, num_rows="fixed", use_container_width=True, key="portfolio_editor")
     total_pct = df["allocation_pct"].sum()
     st.markdown(f"**Total Allocation: {total_pct:.1f}%**")
     if abs(total_pct - 100) > 0.1:
-        st.error("Total allocation must equal 100%.")
+        st.error("Total portfolio allocation must equal 100%. Please adjust your percentages.")
         st.stop()
     df["allocation"] = df["allocation_pct"] / 100 * portfolio_size
+    df["allocation"] = df["allocation_pct"] / 100 * 100000
     df["beta"] = df["symbol"].apply(lambda x: equity_beta if x == "Equities" else 1.0)
-    return df
+    return df[["symbol", "allocation", "beta"]]
 
-def calculate_fair_value(eps, scenarios, probs, liq, fiscal, geo):
-    weighted_eps = sum(probs[k] / 100 * eps * (1 + scenarios[k]["eps_change"]) for k in probs)
-    weighted_pe = sum(probs[k] / 100 * scenarios[k]["pe"] for k in probs)
-    macro_mult = macro_multiplier(liq, fiscal, geo)
-    adjusted_pe = weighted_pe * macro_mult
-    fair_spx = weighted_eps * adjusted_pe
-    return weighted_eps, weighted_pe, macro_mult, fair_spx
+def simulate(eps, spx, probs, scenarios, macro_mult, alloc, targets):
+    total = alloc["allocation"].sum()
+    weighted_eps = sum(probs[s]/100 * eps * (1 + scenarios[s]['eps_change']) for s in probs)
+    weighted_pe = sum(probs[s]/100 * scenarios[s]['pe'] for s in probs)
+    fair_spx = weighted_eps * weighted_pe * macro_mult
 
-def run():
+    alloc["expected_return"] = 0.0
+    for s, weight in probs.items():
+        implied_spx = eps * (1 + scenarios[s]['eps_change']) * scenarios[s]['pe'] * macro_mult
+        for i, row in alloc.iterrows():
+            asset = row["symbol"]
+            if asset == "Equities":
+                r = ((implied_spx / spx) - 1) * row.get("beta", 1.0)
+            elif asset == "Fixed Income":
+                r = 0  # No change in bond yield, assuming flat environment; update if dynamic yield logic added
+            elif asset == "Commodities":
+                r = 0.5 * ((targets["Crude"] / 80 - 1) + (targets["Gold"] / 2000 - 1))
+            elif asset == "Gold":
+                r = (targets["Gold"] / 2000) - 1
+            elif asset == "Cash":
+                r = DEFAULT_CASH_YIELD
+            elif asset == "Hedging Instruments":
+                fall = (spx - implied_spx) / spx if spx != 0 else 0
+                r = min(max(fall * 3, -0.1), 0.3)  # Hedge return scaled by 3x inverse SPX change, capped between -10% and +30%
+            else:
+                r = 0
+            alloc.at[i, "expected_return"] += (weight / 100) * r
+
+    alloc["expected_dollar_return"] = alloc["allocation"] * alloc["expected_return"]
+    alloc["final_value"] = alloc["allocation"] + alloc["expected_dollar_return"]
+    return alloc, fair_spx, weighted_eps, weighted_pe
+
+def main():
     st.title("Macro Scenario-Based Portfolio Simulator")
+    st.markdown("""
+This tool helps simulate how a diversified portfolio might respond across different macroeconomic scenarios.
+We combine scenario-weighted earnings (EPS) and valuation (P/E ratio), then apply macro adjustments to estimate SPX fair value.
+Asset class returns are then computed based on these conditions.
+""")
+
     eps, spx = valuation_inputs()
-    liq, fiscal, geo, short_rate, m2 = macro_conditions()
-    targets = macro_targets(liq, fiscal, geo, short_rate, m2)
+    liq, fiscal, geo = macro_conditions()
+    auto = st.sidebar.checkbox("Auto-adjust scenario probabilities", value=True)
+    probs, valid = scenario_probabilities(auto, liq, fiscal, geo)
+    if not valid:
+        st.warning("Scenario probabilities must sum to 100%.")
+        st.stop()
+
     scenarios = default_scenarios()
-    probs = scenario_probabilities()
-    weighted_eps, weighted_pe, macro_mult, fair_spx = calculate_fair_value(eps, scenarios, probs, liq, fiscal, geo)
+    macro_mult = macro_multiplier(liq, fiscal, geo)
+    targets = macro_targets(liq, fiscal, geo)
+    alloc = portfolio_editor()
+    results, fair_spx, weighted_eps, weighted_pe = simulate(eps, spx, probs, scenarios, macro_mult, alloc, targets)
 
     st.subheader("Calculation Summary")
-    trailing_pe = spx / eps
-    st.markdown(f"**1. Trailing P/E:** {spx:.0f} / {eps:.2f} = {trailing_pe:.2f}")
-    st.markdown("_Shows current valuation of SPX vs earnings._")
+    trailing_pe = spx / eps if eps != 0 else 0
+    st.markdown(f"**1. Trailing P/E (SPX / EPS):** {spx:,.0f} / {eps:.2f} = {trailing_pe:.2f}")
+    st.markdown("_This shows how expensive the market is relative to trailing earnings._")
     st.markdown(f"**2. Weighted Forward EPS:** {weighted_eps:.2f}")
     st.markdown("_This forecasts expected earnings based on how likely each scenario is to occur._")
     st.markdown(f"**3. Weighted P/E:** {weighted_pe:.2f}")
-    st.markdown("_Average valuation across all scenarios._")
+    st.markdown("_This is the average scenario-based valuation multiple, weighted by macro scenario probabilities._")
     st.markdown(f"**4. Macro Multiplier:** {macro_mult:.3f}")
-    st.markdown("_Adjustment for liquidity, stimulus, and risk._")
+    st.markdown("_Reflects the combined effect of liquidity, stimulus, and geopolitical risk on valuations._")
     st.markdown(f"**5. Fair SPX Estimate:** {weighted_eps:.2f} × {weighted_pe:.2f} × {macro_mult:.3f} = {fair_spx:,.0f}")
-    st.markdown("_Macro-adjusted valuation estimate._")
+    st.markdown("_The final macro-adjusted fair value for the S&P 500 based on fundamentals and macro overlays._")
 
-    st.subheader("Macro-Adjusted Asset Anchors")
-    st.markdown(f"- **Gold:** ${targets['Gold']:.2f}")
-    st.markdown(f"- **Crude Oil:** ${targets['Crude']:.2f}")
-    st.markdown(f"- **10-Year Yield:** {targets['10Y']:.2f}%")
+    st.subheader("Macro-Adjusted Asset Targets")
+    st.markdown(f"- **Gold Target Price:** ${targets['Gold']:.2f}")
+    st.markdown(f"- **Crude Oil Target Price:** ${targets['Crude']:.2f}")
+    st.markdown(f"- **10-Year Yield Estimate:** {targets['10Y']:.2f}%")
 
-    df = portfolio_editor()
-    st.subheader("Expected Portfolio Return")
-    results = []
-    for _, row in df.iterrows():
-        sym, alloc, beta = row["symbol"], row["allocation"], row["beta"]
-        if sym == "Equities":
-            r = ((fair_spx / spx) - 1) * beta
-        elif sym == "Fixed Income":
-            r = BOND_DURATION * (targets["10Y"] - 4.0) / 100
-        elif sym == "Cash":
-            r = DEFAULT_CASH_YIELD
-        elif sym == "Commodities":
-            r = ((targets["Crude"] / 80) - 1)
-        elif sym == "Gold":
-            r = ((targets["Gold"] / 2000) - 1)
-        elif sym == "Hedging Instruments":
-            fall = max(0, 1 - (fair_spx / spx))
-            r = min(max(fall * 3, -0.1), 0.3)
-        else:
-            r = 0
-        results.append((sym, alloc, r, alloc * r))
+    st.subheader("Simulation Results")
+    st.dataframe(results.style.format({
+        "allocation": "$ {:,.0f}",
+        "expected_dollar_return": "$ {:,.0f}",
+        "final_value": "$ {:,.0f}",
+        "expected_return": "{:.2%}"
+    }))
+    st.metric("Fair SPX Estimate", f"{fair_spx:,.0f}")
+    st.metric("Expected Portfolio Return", f"{results['expected_dollar_return'].sum() / results['allocation'].sum():.2%}")
+    st.metric("Expected Final Value", f"$ {results['final_value'].sum():,.0f}")
 
-    result_df = pd.DataFrame(results, columns=["Asset", "Allocation", "Return", "Gain/Loss"])
-    st.dataframe(result_df.style.format({"Allocation": "$ {:,.0f}", "Return": "{:.2%}", "Gain/Loss": "$ {:,.0f}"}))
-    st.metric("Total Expected Return", f"{result_df['Gain/Loss'].sum() / result_df['Allocation'].sum():.2%}")
-    st.metric("Final Portfolio Value", f"$ {result_df['Allocation'].sum() + result_df['Gain/Loss'].sum():,.0f}")
-
-run()
+if __name__ == "__main__":
+    main()
