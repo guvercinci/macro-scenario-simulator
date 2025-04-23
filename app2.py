@@ -6,7 +6,7 @@ import pandas as pd
 st.set_page_config(page_title="Macro Portfolio Simulator", layout="wide")
 
 # === Constants ===
-MAX_MACRO_PE_IMPACT = 0.3
+MAX_MACRO_PE_IMPACT = 0.6
 DEFAULT_CASH_YIELD = 0.04
 BOND_DURATION = 7
 
@@ -57,7 +57,7 @@ def default_scenarios():
     return {
         "Recession": {"pe": 14, "eps_change": -0.20},
         "Stagflation": {"pe": 15, "eps_change": -0.10},
-        "Boom": {"pe": 20, "eps_change": 0.15},
+        "Boom": {"pe": 24, "eps_change": 0.15},
         "Deflation": {"pe": 17, "eps_change": -0.05},
     }
 
