@@ -35,9 +35,7 @@ Toggle automatic scenario assignment based on macro conditions.
 auto_prob_toggle = st.checkbox("Auto-adjust scenario probabilities based on macro inputs", value=False)
 col_a, col_b = st.columns([1, 2])
 
-if auto_prob_toggle:
-    probabilities = {k: 0 for k in ["Recession", "Stagflation", "Boom", "Deflation"]}
-    total_prob = 0
+
 with col_a:
     st.subheader("Scenario Probabilities")
     default_scenario_data = {
@@ -58,9 +56,7 @@ with col_a:
         st.markdown(f"**Total Probability:** {total_prob:.1f}%")
         if total_prob != 100:
             st.warning("Total probabilities must sum to 100%.")
-    st.markdown(f"**Total Probability:** {total_prob:.1f}%")
-    if total_prob != 100:
-        st.warning("Total probabilities must sum to 100%.")
+    
 
 with col_b:
     st.subheader("Global Macro Backdrop")
@@ -127,10 +123,6 @@ if auto_prob_toggle:
     st.markdown(f"**Total Probability:** {total_prob:.1f}%")
     for k, v in probabilities.items():
         st.markdown(f"**{k}:** {v}%")
-    for k, v in probabilities.items():
-        st.markdown(f"**{k}:** {v}%")
-    if total_prob != 100:
-        st.warning("Check logic: inferred probabilities do not sum to 100%.")
 
 # --- END AUTO-IMPROVEMENT SECTION ---
 
