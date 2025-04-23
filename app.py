@@ -69,17 +69,10 @@ multiplier_explainer = liquidity_index * 0.1 + fiscal_stimulus * 0.05 - geopolit
 spx_macro_adjustment = trailing_eps * trailing_pe * (1 + multiplier_explainer)
 
 st.markdown(f"**Implied SPX (Current Valuation):** {trailing_eps * trailing_pe:,.0f}")
-weighted_eps = sum(
-    probabilities[s] / 100 * trailing_eps * (1 + scenario_data[s]['eps_change'])
-    for s in scenario_names
-)
-weighted_pe = sum(
-    probabilities[s] / 100 * scenario_data[s]['pe']
-    for s in scenario_names
-)
-spx_fair_value = weighted_eps * weighted_pe
-st.markdown(f"**Macro-Adjusted SPX Estimate:** {spx_macro_adjustment:,.0f}")
-st.markdown(f"**Scenario-Weighted Fair Value (EPS × P/E):** {spx_fair_value:,.0f}")
+
+# Calculate scenario-weighted fair value after scenario_data is defined
+
+
 st.markdown(f"**Gold Price:** ${adjusted_gold:.2f}  Crude Oil:** ${adjusted_crude:.2f}  10-Year Yield:** {adjusted_10y:.2f}%")
 
 reference_prices = {
@@ -104,8 +97,18 @@ if use_custom_assumptions:
         row["Scenario"]: {"pe": row["P/E Ratio"], "eps_change": row["Earnings Change (%)"] / 100}
         for _, row in edited_assumptions.iterrows()
     }
-else:
-    scenario_data = default_scenario_data
+
+    weighted_eps = sum(
+        probabilities[s] / 100 * trailing_eps * (1 + scenario_data[s]['eps_change'])
+        for s in scenario_names
+    )
+    weighted_pe = sum(
+        probabilities[s] / 100 * scenario_data[s]['pe']
+        for s in scenario_names
+    )
+    spx_fair_value = weighted_eps * weighted_pe
+    st.markdown(f"**Scenario-Weighted Fair Value (EPS × P/E):** {spx_fair_value:,.0f}")
+
     st.dataframe(pd.DataFrame(default_scenario_data).T.rename(columns={"pe": "P/E Ratio", "eps_change": "Earnings Change"}).style.format({"Earnings Change": "{:.0%}"}))
 
 # 5. Portfolio allocations
