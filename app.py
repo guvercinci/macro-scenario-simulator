@@ -116,6 +116,7 @@ if auto_prob_toggle:
     inferred = infer_probabilities_from_macro(liquidity_index, fiscal_stimulus, geopolitical_risk)
     probabilities = inferred.copy()
     total_prob = sum(probabilities.values())
+    st.markdown(f"**Total Probability:** {total_prob:.1f}%")
     for k, v in probabilities.items():
         st.markdown(f"**{k}:** {v}%")
     if total_prob != 100:
