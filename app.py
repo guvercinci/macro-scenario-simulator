@@ -7,7 +7,12 @@ st.title("Macro Scenario-Based Portfolio Simulator")
 st.markdown("""
 This tool simulates portfolio returns based on macroeconomic scenarios.
 It uses assumptions about SPX valuation, earnings sensitivity, commodity prices,
-interest rate shifts, and adds new macro inputs inspired by Ray Dalio's framework.
+interest rate shifts, and macro factors inspired by Ray Dalio's framework.
+
+**How macro factors influence assets:**
+- **Liquidity**: High liquidity boosts equity valuations and gold prices, and depresses yields.
+- **Fiscal Stimulus**: Increases earnings expectations, equity multiples, and demand for energy.
+- **Geopolitical Risk**: Suppresses equity P/E ratios, boosts gold (safe haven), and lowers bond yields (flight to safety).
 """)
 
 # Editable allocation chart
@@ -28,140 +33,26 @@ with col1:
 with col2:
     current_spx = st.number_input("Current SPX Index Level", value=5287.76, step=10.0)
 
-# Derived trailing P/E
 trailing_pe = current_spx / trailing_eps
 st.markdown(f"**Calculated Trailing P/E Ratio:** {trailing_pe:.2f}")
 
-reference_prices = {
-    "SPX": current_spx,
-    "Gold": 2000,
-    "Crude": 80,
-    "10Y": 4.0,
-    "Trailing_EPS": trailing_eps,
-    "Liquidity Index": 0.5,
-    "Fiscal Stimulus": 0.3,
-    "Geopolitical Risk": 0.1
-}
-
-# Additional macro assumptions
+# Global macro backdrop
 st.header("Global Macro Backdrop")
 col3, col4, col5 = st.columns(3)
 with col3:
-    liquidity_index = st.slider("Liquidity Index (0=Drained, 1=Flooded)", 0.0, 1.0, reference_prices["Liquidity Index"])
+    liquidity_index = st.slider("Liquidity Index (0=Drained, 1=Flooded)", 0.0, 1.0, 0.5)
 with col4:
-    fiscal_stimulus = st.slider("Fiscal Stimulus (0=None, 1=Extreme)", 0.0, 1.0, reference_prices["Fiscal Stimulus"])
+    fiscal_stimulus = st.slider("Fiscal Stimulus (0=None, 1=Extreme)", 0.0, 1.0, 0.3)
 with col5:
-    geopolitical_risk = st.slider("Geopolitical Risk Index (0=Stable, 1=Crisis)", 0.0, 1.0, reference_prices["Geopolitical Risk"])
+    geopolitical_risk = st.slider("Geopolitical Risk Index (0=Stable, 1=Crisis)", 0.0, 1.0, 0.1)
 
-# Update macro factors
-reference_prices["Liquidity Index"] = liquidity_index
-reference_prices["Fiscal Stimulus"] = fiscal_stimulus
-reference_prices["Geopolitical Risk"] = geopolitical_risk
+# Macro-driven dynamic variables
+adjusted_gold = 2000 * (1 + liquidity_index * 0.05 + geopolitical_risk * 0.1)
+adjusted_crude = 80 * (1 + fiscal_stimulus * 0.1)
+adjusted_10y = 4.0 * (1 - liquidity_index * 0.05 - geopolitical_risk * 0.05 + fiscal_stimulus * 0.05)
 
-# Scenario assumptions
-st.header("Scenario Assumptions")
-default_scenario_data = {
-    "Recession": {"pe": 14, "eps_change": -0.20},
-    "Stagflation": {"pe": 15, "eps_change": -0.10},
-    "Boom": {"pe": 20, "eps_change": 0.15},
-    "Deflation": {"pe": 17, "eps_change": -0.05}
-}
-
-use_custom_assumptions = st.checkbox("Manually edit P/E and EPS change assumptions", value=False)
-scenario_names = list(default_scenario_data.keys())
-if use_custom_assumptions:
-    assumption_input = pd.DataFrame(default_scenario_data).T.reset_index().rename(columns={"index": "Scenario", "pe": "P/E Ratio", "eps_change": "Earnings Change (%)"})
-    assumption_input["Earnings Change (%)"] *= 100
-    edited_assumptions = st.data_editor(assumption_input, num_rows="fixed", use_container_width=True)
-    scenario_data = {
-        row["Scenario"]: {"pe": row["P/E Ratio"], "eps_change": row["Earnings Change (%)"] / 100}
-        for _, row in edited_assumptions.iterrows()
-    }
-else:
-    scenario_data = default_scenario_data
-    st.dataframe(pd.DataFrame(default_scenario_data).T.rename(columns={"pe": "P/E Ratio", "eps_change": "Earnings Change"}).style.format({"Earnings Change": "{:.0%}"}))
-
-# Gold targets
-gold_targets = {
-    "Recession": 2200,
-    "Stagflation": 2500,
-    "Boom": 1900,
-    "Deflation": 2100
-}
-
-# Scenario probabilities
-st.header("Scenario Probabilities")
-probabilities = {}
-total_prob = 0
-for scenario in scenario_names:
-    p = st.slider(f"{scenario} Probability (%)", min_value=0, max_value=100, value=25)
-    probabilities[scenario] = p
-    total_prob += p
-
-st.write(f"**Total Assigned Probability:** {total_prob:.1f}%")
-
-if total_prob != 100:
-    st.warning("Total probabilities must sum to 100%.")
-
-# Run simulation
-if total_prob == 100:
-    df = editable_allocations.copy()
-    df["expected_return"] = 0.0
-
-    for scenario, weight in probabilities.items():
-        pe = scenario_data[scenario]["pe"]
-        eps = reference_prices["Trailing_EPS"] * (1 + scenario_data[scenario]["eps_change"])
-        implied_spx_price = eps * pe
-
-        # Adjusted by macro factors (simple multiplicative adjustments)
-        liquidity_boost = 1 + reference_prices["Liquidity Index"] * 0.1
-        stimulus_boost = 1 + reference_prices["Fiscal Stimulus"] * 0.05
-        geopolitical_drag = 1 - reference_prices["Geopolitical Risk"] * 0.05
-
-        macro_multiplier = liquidity_boost * stimulus_boost * geopolitical_drag
-        implied_spx_price *= macro_multiplier
-
-        gold_target = gold_targets[scenario]
-        crude_price = reference_prices["Crude"] * (0.9 if scenario == "Recession" else 1.2 if scenario == "Boom" else 1.0)
-        bond_yield = reference_prices["10Y"] * (1.25 if scenario == "Boom" else 0.75 if scenario == "Recession" else 1.0)
-
-        for asset in df["symbol"]:
-            if asset == "Stocks":
-                r = (implied_spx_price / reference_prices["SPX"]) - 1
-            elif asset == "Treasuries":
-                r = (reference_prices["10Y"] - bond_yield) / reference_prices["10Y"]
-            elif asset == "Commodities":
-                crude_return = (crude_price / reference_prices["Crude"]) - 1
-                gold_return = (gold_target / reference_prices["Gold"]) - 1
-                r = 0.5 * (crude_return + gold_return)
-            elif asset == "Gold":
-                r = (gold_target / reference_prices["Gold"]) - 1
-            elif asset == "SPY Put Spread":
-                r = (reference_prices["SPX"] - implied_spx_price) / reference_prices["SPX"] * 3
-            else:
-                r = 0
-
-            df.loc[df["symbol"] == asset, "expected_return"] += (weight / 100) * r
-
-    df["expected_dollar_return"] = df["allocation"] * df["expected_return"]
-    df["final_value"] = df["allocation"] + df["expected_dollar_return"]
-
-    portfolio_expected_return = df["expected_dollar_return"].sum() / df["allocation"].sum()
-    portfolio_final_value = df["final_value"].sum()
-
-    st.subheader("Simulation Results")
-    st.dataframe(df.style.format({"allocation": "$ {:,.0f}", "expected_dollar_return": "$ {:,.0f}", "final_value": "$ {:,.0f}", "expected_return": "{:.2%}"}))
-    st.metric("Expected Portfolio Return", f"{portfolio_expected_return:.2%}")
-    st.metric("Expected Final Portfolio Value", f"$ {portfolio_final_value:,.0f}")
-
-    st.subheader("Scenario Assumptions Summary")
-    summary_df = pd.DataFrame({
-        "Scenario": scenario_names,
-        "P/E Ratio": [scenario_data[s]["pe"] for s in scenario_names],
-        "Earnings Change": [f"{scenario_data[s]['eps_change']*100:.0f}%" for s in scenario_names],
-        "Implied SPX (Adj.)": [reference_prices["Trailing_EPS"] * (1 + scenario_data[s]["eps_change"]) * scenario_data[s]["pe"] * macro_multiplier for s in scenario_names],
-        "Gold Price": [gold_targets[s] for s in scenario_names],
-        "Crude Oil Price": [reference_prices["Crude"] * (0.9 if s == "Recession" else 1.2 if s == "Boom" else 1.0) for s in scenario_names],
-        "10Y Yield": [reference_prices["10Y"] * (1.25 if s == "Boom" else 0.75 if s == "Recession" else 1.0) for s in scenario_names]
-    })
-    st.dataframe(summary_df.set_index("Scenario"))
+# Display adjusted variables
+st.subheader("Macro-Adjusted Asset Anchors")
+st.write(f"**Gold Price:** ${adjusted_gold:.2f}")
+st.write(f"**Crude Oil Price:** ${adjusted_crude:.2f}")
+st.write(f"**10-Year Yield:** {adjusted_10y:.2f}%")
