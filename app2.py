@@ -118,9 +118,15 @@ def macro_multiplier(liq, fiscal, geo):
     combined = liquidity_impact + fiscal_impact + geo_impact
     return 1 + min(MAX_MACRO_PE_IMPACT, combined)
 
-def macro_targets(liq, fiscal, geo):
+def macro_targets(liq, fiscal, geo, short_term_rate=1.5, m2_growth=4.0):
+    gold_base = 1800
+    real_rate_factor = max(0, (2 - short_term_rate)) * 0.2
+    m2_factor = max(0, (m2_growth - 5)) * 0.07
+    geo_factor = geo * 0.4
+    gold_price = gold_base * (1 + real_rate_factor + m2_factor + geo_factor)
+
     return {
-        "Gold": 2000 * (1 + liq * 0.05 + geo * 0.1),
+        "Gold": gold_price,
         "Crude": 80 * (1 + fiscal * 0.1),
         "10Y": 4.0 * (1 - liq * 0.05 - geo * 0.05 + fiscal * 0.05),
     }
