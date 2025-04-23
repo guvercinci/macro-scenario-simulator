@@ -243,15 +243,15 @@ def run():
     dfv = pd.DataFrame({'Regime': regimes, 'Fair SPX': values, 'Return%': rets, 'P%': [probs[r] for r in regimes]})
     st.write(dfv)
 
-    # 6. Valuation Anchors Comparison
+        # 6. Valuation Anchors Comparison
     st.subheader("6. Valuation & Asset Price Anchors")
-    gold_price = price_gold(rt, st.sidebar.number_input("VIX for Gold", 16), geo_score)
-        oil_price = price_oil(
-        st.sidebar.number_input("Oil Inv Change (%)", 0.0),
-        st.sidebar.slider("OPEC Quota", -1.0, 1.0, 0.0),
-        st.sidebar.number_input("Global PMI", 50.0),
+    gold_price = price_gold(
+        rt,
+        st.sidebar.number_input("VIX for Gold", 16.0),
         geo_score
-    )", 0.0),
+    )
+    oil_price = price_oil(
+        st.sidebar.number_input("Oil Inv Change (%)", 0.0),
         st.sidebar.slider("OPEC Quota", -1.0, 1.0, 0.0),
         st.sidebar.number_input("Global PMI", 50.0),
         geo_score
