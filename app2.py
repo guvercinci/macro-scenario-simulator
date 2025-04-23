@@ -126,6 +126,7 @@ def macro_targets(liq, fiscal, geo):
     }
 
 def portfolio_editor():
+    equity_beta = st.sidebar.slider("Equity Beta (vs SPX)", min_value=0.5, max_value=2.0, value=1.0, step=0.1, help="Set how sensitive Equities are to SPX changes. 1.0 = market beta")
     st.subheader("Portfolio Allocation")
     portfolio_size = st.number_input("Total Portfolio Size ($)", value=100000, step=10000)
     preset = st.selectbox("Choose a Portfolio Preset:", ["Balanced (60/40)", "Aggressive Growth", "Defensive Hedge", "Custom"], index=0)
@@ -143,7 +144,8 @@ def portfolio_editor():
     df = st.data_editor(df, num_rows="fixed", use_container_width=True, key="portfolio_editor")
     df["allocation"] = df["allocation_pct"] / 100 * portfolio_size
     df["allocation"] = df["allocation_pct"] / 100 * 100000
-    return df[["symbol", "allocation"]]
+    df["beta"] = df["symbol"].apply(lambda x: equity_beta if x == "Equities" else 1.0)
+    return df[["symbol", "allocation", "beta"]]
 
 def simulate(eps, spx, probs, scenarios, macro_mult, alloc, targets):
     total = alloc["allocation"].sum()
@@ -157,7 +159,7 @@ def simulate(eps, spx, probs, scenarios, macro_mult, alloc, targets):
         for i, row in alloc.iterrows():
             asset = row["symbol"]
             if asset == "Equities":
-                r = (implied_spx / spx) - 1
+                r = ((implied_spx / spx) - 1) * row.get("beta", 1.0)
             elif asset == "Fixed Income":
                 r = 0  # No change in bond yield, assuming flat environment; update if dynamic yield logic added
             elif asset == "Commodities":
@@ -168,7 +170,7 @@ def simulate(eps, spx, probs, scenarios, macro_mult, alloc, targets):
                 r = DEFAULT_CASH_YIELD
             elif asset == "Hedging Instruments":
                 fall = (spx - implied_spx) / spx if spx != 0 else 0
-                r = min(max(fall, 0), 0.2) * 3
+                r = min(max(fall * 3, -0.1), 0.3)  # Hedge return scaled by 3x inverse SPX change, capped between -10% and +30%
             else:
                 r = 0
             alloc.at[i, "expected_return"] += (weight / 100) * r
