@@ -215,14 +215,20 @@ def run():
 
     # EPS projections & fair SPX
     values, returns = [], []
+    # Scenario-specific EPS inputs grouped by regime
     for reg in regimes:
-        eps_f = eps_proj(
-            eps,
-            st.sidebar.number_input(f"GDP Growth {reg}", 2.0),
-            m2_growth,
-            st.sidebar.number_input(f"Rate Shock {reg}%", 0.0),
-            st.sidebar.number_input(f"Share Chg {reg}%", 0.0)
-        )
+        with st.sidebar.expander(f"{reg} Scenario Inputs", expanded=True):
+            gdp_growth = st.number_input(
+                f"GDP Growth (%){reg}", 2.0, key=f"gdp_{reg}"
+            )
+            rate_shock = st.number_input(
+                f"Rate Shock (%){reg}", 0.0, key=f"rate_{reg}"
+            )
+            share_chg = st.number_input(
+                f"Share Change (%){reg}", 0.0, key=f"share_{reg}"
+            )
+        # Project EPS and derive fair-value under each regime
+        eps_f = eps_proj(eps, gdp_growth, m2_growth, rate_shock, share_chg)
         pe = pe_from_real(short_term_rate) * specs[reg]['pe_mul']
         fair = eps_f * pe
         values.append(fair)
