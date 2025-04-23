@@ -121,20 +121,12 @@ if auto_prob_toggle:
         diff = 100 - total_prob
         max_key = max(scaled, key=scaled.get)
         scaled[max_key] += diff
+
     probabilities = scaled
     total_prob = sum(probabilities.values())
-    diff = 100 - total_prob
-    if diff != 0:
-        # add/subtract the difference to the largest weight to make total 100
-        max_key = max(probabilities, key=probabilities.get)
-        probabilities[max_key] += diff
-    total_prob = sum(probabilities.values())
-        diff = 100 - total_prob
-        if diff != 0:
-            key = list(probabilities.keys())[0]
-            probabilities[key] += diff
-        total_prob = sum(probabilities.values())
     st.markdown(f"**Total Probability:** {total_prob:.1f}%")
+    for k, v in probabilities.items():
+        st.markdown(f"**{k}:** {v}%")
     for k, v in probabilities.items():
         st.markdown(f"**{k}:** {v}%")
     if total_prob != 100:
