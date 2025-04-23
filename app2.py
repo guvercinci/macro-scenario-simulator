@@ -203,3 +203,33 @@ def run():
     )
     # Display Actual vs Model anchors as interactive dataframe
     st.table(df_anchors.style.format({"Actual":"{:.2f}","Model":"{:.2f}"}))
+
+    # 7. Portfolio Allocation
+    dfp, alloc = portfolio_editor()
+
+    # 8. Expected Portfolio Return
+    # Compute asset return vector
+    exp_eq = sum(probs[r]/100 * rets[i] for i, r in enumerate(regimes))
+    gold_ret = gold_price / a_gold - 1
+    oil_ret  = oil_price / a_oil - 1
+    bond_ret = bond_yield
+    cash_ret = DEFAULT_CASH_YIELD
+    ret_asset = np.array([exp_eq, gold_ret, oil_ret, bond_ret, cash_ret])
+
+    exp_port_return = np.dot(alloc, ret_asset)
+    st.subheader("7. Expected Portfolio Return")
+    st.metric(label="Expected Return", value=f"{exp_port_return:.2%}")
+
+    # 9. Monte Carlo Simulation & Distribution
+    vols = np.array([0.15, 0.10, 0.12, 0.08, 0.00])
+    avg_corr = np.mean(list(corr_vals.values()))
+    cov = np.diag(vols) @ np.array([
+        [1,     avg_corr, 0,      0,      0],
+        [avg_corr, 1,     0,      0,      0],
+        [0,     0,     1,      0,      0],
+        [0,     0,     0,      1,      0],
+        [0,     0,     0,      0,      1]
+    ]) @ np.diag(vols)
+    sims = simulate(alloc, ret_asset, cov)
+    st.subheader("8. Portfolio MC Distribution")
+    st.line_chart(pd.Series(sims).rolling(50).mean()))
