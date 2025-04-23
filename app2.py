@@ -211,6 +211,5 @@ def run():
     st.subheader("Portfolio MC Distribution")
     st.line_chart(pd.Series(port_sims).rolling(50).mean())
 
-if __name__=='__main__':
-    run()=='__main__':
+if __name__ == '__main__':
     run()
