@@ -38,9 +38,7 @@ def scenario_probabilities(auto, liq, fiscal, geo):
         }
         remaining = 100 - sum([v for k, v in probs.items() if k != "Deflation"])
         probs["Deflation"] = max(min(remaining, 40), 0)
-        elif liq < 0.3 and fiscal < 0.3:
-            probs = {"Boom": 5, "Stagflation": 30, "Recession": 40, "Deflation": 25}
-        elif geo > 0.6:
+
             probs = {"Boom": 10, "Stagflation": 35, "Recession": 35, "Deflation": 20}
         else:
             probs = {s: 25 for s in names}
