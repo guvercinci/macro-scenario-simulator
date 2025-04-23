@@ -49,19 +49,19 @@ def macro_conditions():
 
         # Normalize to 0-1
         liq = np.mean([
-            (fed_bs-15)/30,                           # *Fed liquidity proxy based on balance sheet size.*
-            np.clip((5-short_term_rate)/5,0,1),       # *Interest-rate-driven liquidity normalization.*
-            np.clip(m2_growth/15,0,1)                 # *Money supply growth impact on liquidity.*
+            (fed_bs-15)/30,
+            np.clip((5-short_term_rate)/5,0,1),
+            np.clip(m2_growth/15,0,1)
         ])
         fiscal = np.mean([
-            np.clip((deficit-1)/14,0,1),              # *Deficit-to-GDP impact on fiscal tailwinds.*
-            np.clip((gov_spend-15)/20,0,1),           # *Government spending normalization.*
-            np.clip((transfers-5)/15,0,1)             # *Net transfers normalization.*
+            np.clip((deficit-1)/14,0,1),
+            np.clip((gov_spend-15)/20,0,1),
+            np.clip((transfers-5)/15,0,1)
         ])
         geo = np.mean([
-            np.clip((geo_index-50)/150,0,1),          # *Narrative risk scaling from index.*
-            np.clip((vix-10)/40,0,1),                 # *Volatility-driven geo risk.*
-            np.clip((conflicts-10)/50,0,1)            # *Event count-driven geo risk.*
+            np.clip((geo_index-50)/150,0,1),
+            np.clip((vix-10)/40,0,1),
+            np.clip((conflicts-10)/50,0,1)
         ])
 
         # Manual overrides
@@ -79,15 +79,15 @@ def macro_conditions():
 # === Sidebar: Market Inputs ===
 def market_inputs():
     """
-    *Gathers core market data including trailing earnings, index level, and geo-flashpoint flags.*
+    *Gathers key market figures—SPX earnings/index—and geopolitical flags to feed downstream models.*
     """
     st.sidebar.header("2. Market Inputs")
-    st.sidebar.markdown("_Gathers key market figures—SPX earnings/index—and geopolitical flags to feed downstream models._")
+    st.sidebar.markdown("_Gathers key market figures—SPX earnings/index—and geopolitical flags._")
     eps = st.sidebar.number_input("Trailing SPX Earnings (EPS)",200.0)
     spx = st.sidebar.number_input("Current SPX Index",5300.0)
 
-    # Narrative geo-flashpoints
     st.sidebar.header("3. Geo Flashpoints")
+    st.sidebar.markdown("_Flags for major geopolitical events affecting markets._")
     china_tariff = st.sidebar.checkbox("China–US Tariff Escalation")
     russia_gas_cut = st.sidebar.checkbox("Russia Gas Cutoff")
 
@@ -104,10 +104,10 @@ def pe_from_real(rate, prem=0.04):
 # === Scenario & Probabilities ===
 def regimes_and_probs():
     """
-    *Defines discrete economic regimes and collects user-assigned probabilities that sum to 100%.*
+    *Defines economic regimes and captures user-assigned likelihoods that sum to 100%.*
     """
     st.sidebar.header("4. Regime Probabilities")
-    st.sidebar.markdown("_Defines economic regimes and captures user-assigned likelihoods that sum to 100%._")
+    st.sidebar.markdown("_Assign probabilities to each economic regime (must total 100%)._")
     regimes = ["Expansion","Recession","Stagflation","Deflation"]
     probs = {r: st.sidebar.slider(f"P({r})%",0,100,25) for r in regimes}
     if sum(probs.values())!=100:
@@ -172,11 +172,7 @@ def portfolio_and_corr():
     *Allows users to set portfolio allocations and regime-specific equity-gold correlations.*
     """
     st.subheader("Portfolio Allocation & Corr")
-    st.markdown("_Set your asset weights and adjust correlation coefficients for each regime to capture changing relationships._")():
-    """
-    *Allows users to set portfolio allocations and regime-specific equity-gold correlations.*
-    """
-    st.subheader("Portfolio Allocation & Corr")
+    st.markdown("_Set your asset weights and adjust correlation coefficients for each regime to capture changing relationships._")
     assets = ['Equities','Gold','Oil','Bonds','Cash']
     df = pd.DataFrame({'Asset': assets, 'Pct': [40,20,20,15,5]})
     df = st.data_editor(df, use_container_width=True)
@@ -185,7 +181,7 @@ def portfolio_and_corr():
         st.stop()
     corr = {}
     for reg in define_scenarios().keys():
-        corr[reg] = st.slider(f"Corr eq-gold {reg}", -1.0, 1.0, -0.2, key=reg)
+        corr[reg] = st.sidebar.slider(f"Corr eq-gold {reg}", -1.0, 1.0, -0.2, key=reg)
     return df, corr
 
 # === Monte Carlo ===
