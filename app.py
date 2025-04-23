@@ -268,7 +268,7 @@ if total_prob == 100:
 
     # 7. Portfolio Stress Test
     st.subheader("Stress Test: SPX & P/E Sensitivity")
-        pe_range = range(10, 26, 2)
+    pe_range = range(10, 26, 2)
     stress_data = []
     stress_portfolio = []
 
