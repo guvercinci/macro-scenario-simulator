@@ -84,6 +84,32 @@ reference_prices = {
     "Geopolitical Risk": geopolitical_risk
 }
 
+# --- AUTO-IMPROVEMENT LOGIC ---
+
+# Infer scenario probabilities from macro backdrop (optional override of manual sliders)
+def infer_probabilities_from_macro(liq, fiscal, geo):
+    if liq > 0.6 and fiscal > 0.5 and geo < 0.3:
+        return {"Boom": 50, "Stagflation": 15, "Recession": 15, "Deflation": 20}
+    elif liq < 0.3 and fiscal < 0.3:
+        return {"Boom": 5, "Stagflation": 30, "Recession": 40, "Deflation": 25}
+    elif geo > 0.6:
+        return {"Boom": 10, "Stagflation": 35, "Recession": 35, "Deflation": 20}
+    else:
+        return {"Boom": 25, "Stagflation": 25, "Recession": 25, "Deflation": 25}
+
+# Optional toggle
+auto_prob_toggle = st.checkbox("Auto-adjust scenario probabilities based on macro inputs")
+if auto_prob_toggle:
+    inferred = infer_probabilities_from_macro(liquidity_index, fiscal_stimulus, geopolitical_risk)
+    probabilities = inferred.copy()
+    total_prob = sum(probabilities.values())
+    for k, v in probabilities.items():
+        st.markdown(f"**{k}:** {v}%")
+    if total_prob != 100:
+        st.warning("Check logic: inferred probabilities do not sum to 100%.")
+
+# --- END AUTO-IMPROVEMENT SECTION ---
+
 # 4. Scenario assumptions
 st.header("Scenario Assumptions")
 use_custom_assumptions = st.checkbox("Edit Scenario Multiples and EPS Impact", value=False)
