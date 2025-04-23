@@ -109,6 +109,30 @@ weighted_pe = sum(
 )
 spx_fair_value = weighted_eps * weighted_pe
 st.markdown(f"**Scenario-Weighted Fair Value (EPS × P/E):** {spx_fair_value:,.0f}")
+
+# Show component breakdown
+with st.expander("See Fair Value Calculation Breakdown"):
+    st.markdown("### Weighted EPS and P/E by Scenario")
+    calc_df = pd.DataFrame([
+        {
+            "Scenario": s,
+            "Probability (%)": probabilities[s],
+            "Earnings Estimate": trailing_eps * (1 + scenario_data[s]['eps_change']),
+            "P/E Ratio": scenario_data[s]['pe'],
+            "Weighted EPS": probabilities[s] / 100 * trailing_eps * (1 + scenario_data[s]['eps_change']),
+            "Weighted P/E": probabilities[s] / 100 * scenario_data[s]['pe']
+        } for s in scenario_names
+    ])
+    st.dataframe(calc_df.set_index("Scenario").style.format({
+        "Probability (%)": "{:.0f}%",
+        "Earnings Estimate": "{:.2f}",
+        "P/E Ratio": "{:.2f}",
+        "Weighted EPS": "{:.2f}",
+        "Weighted P/E": "{:.2f}"
+    }))
+    st.markdown(f"**Total Weighted EPS:** {weighted_eps:.2f}")
+    st.markdown(f"**Total Weighted P/E:** {weighted_pe:.2f}")
+    st.markdown(f"**Fair Value = EPS × P/E = {weighted_eps:.2f} × {weighted_pe:.2f} = {spx_fair_value:,.0f}**")
 st.dataframe(pd.DataFrame(default_scenario_data).T.rename(columns={"pe": "P/E Ratio", "eps_change": "Earnings Change"}).style.format({"Earnings Change": "{:.0%}"}))
 
 # 5. Portfolio allocations
