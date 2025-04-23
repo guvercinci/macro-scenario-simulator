@@ -53,6 +53,12 @@ adjusted_10y = 4.0 * (1 - liquidity_index * 0.05 - geopolitical_risk * 0.05 + fi
 
 # Display adjusted variables
 st.subheader("Macro-Adjusted Asset Anchors")
+
+# Visualize macro impact on SPX (fair value shift)
+multiplier_explainer = liquidity_index * 0.1 + fiscal_stimulus * 0.05 - geopolitical_risk * 0.05
+spx_macro_adjustment = trailing_eps * trailing_pe * (1 + multiplier_explainer)
+st.markdown(f"**SPX Fair Value (based on trailing P/E × EPS):** {trailing_eps * trailing_pe:,.0f}")
+st.markdown(f"**Macro-Adjusted SPX Estimate:** {spx_macro_adjustment:,.0f}  *(based on macro backdrop)*")
 st.write(f"**Gold Price:** ${adjusted_gold:.2f}")
 st.write(f"**Crude Oil Price:** ${adjusted_crude:.2f}")
 st.write(f"**10-Year Yield:** {adjusted_10y:.2f}%")
