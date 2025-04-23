@@ -120,9 +120,9 @@ def macro_multiplier(liq, fiscal, geo):
 
 def macro_targets(liq, fiscal, geo, short_term_rate=1.5, m2_growth=4.0):  # enhanced gold logic
     gold_base = 2000  # Updated to reflect a more current market baseline
-    real_rate_factor = max(0, (3 - short_term_rate)) * 0.35
-    m2_factor = max(0, (m2_growth - 5)) * 0.12
-    geo_factor = geo * 0.7
+    real_rate_factor = max(0, (3 - short_term_rate)) * 0.25
+    m2_factor = max(0, (m2_growth - 5)) * 0.10
+    geo_factor = geo * 0.4  # reduced impact to avoid overestimating gold in neutral conditions
     gold_price = gold_base * (1 + real_rate_factor + m2_factor + geo_factor)
 
     return {
