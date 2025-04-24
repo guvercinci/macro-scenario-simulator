@@ -12,7 +12,7 @@ st.markdown(
 )
 
 # === Constants ===
-MAX_MACRO_PE_IMPACT = 0.6  # max adjustment to P/E from macro factors
+MAX_MACRO_PE_IMPACT = 0.6  # max adjustment to P/E from macro
 DEFAULT_CASH_YIELD = 0.02  # assumed cash yield
 
 # === Step 1: Market Prices & Flashpoints ===
@@ -36,28 +36,22 @@ FISCAL_WEIGHTS = [0.33, 0.33, 0.34]
 GEO_WEIGHTS = [0.5, 0.3, 0.2]
 
 def normalize_liquidity(fed_bs, short_rate, m2):
-    comps = [
-        (fed_bs - 15) / 30,
-        np.clip((5 - short_rate) / 5, 0, 1),
-        np.clip(m2 / 15, 0, 1)
-    ]
-    return sum(w * c for w, c in zip(LIQ_WEIGHTS, comps))
+    comps = [(fed_bs - 15) / 30,
+             np.clip((5 - short_rate) / 5, 0, 1),
+             np.clip(m2 / 15, 0, 1)]
+    return sum(w*c for w,c in zip(LIQ_WEIGHTS, comps))
 
 def normalize_fiscal(deficit, spend, transfer):
-    comps = [
-        np.clip((deficit - 1) / 14, 0, 1),
-        np.clip((spend - 15) / 20, 0, 1),
-        np.clip((transfer - 5) / 15, 0, 1)
-    ]
-    return sum(w * c for w, c in zip(FISCAL_WEIGHTS, comps))
+    comps = [np.clip((deficit - 1) / 14, 0, 1),
+             np.clip((spend - 15) / 20, 0, 1),
+             np.clip((transfer - 5) / 15, 0, 1)]
+    return sum(w*c for w,c in zip(FISCAL_WEIGHTS, comps))
 
 def normalize_geo(idx, vix, conflicts):
-    comps = [
-        np.clip((idx - 50) / 150, 0, 1),
-        np.clip((vix - 10) / 40, 0, 1),
-        np.clip((conflicts - 10) / 50, 0, 1)
-    ]
-    return sum(w * c for w, c in zip(GEO_WEIGHTS, comps))
+    comps = [np.clip((idx - 50) / 150, 0, 1),
+             np.clip((vix - 10) / 40, 0, 1),
+             np.clip((conflicts - 10) / 50, 0, 1)]
+    return sum(w*c for w,c in zip(GEO_WEIGHTS, comps))
 
 def step2_backdrop():
     st.sidebar.header("Macro Backdrop")
@@ -66,15 +60,15 @@ def step2_backdrop():
     if use_emp:
         override = st.sidebar.checkbox("Manual override", False)
         disabled = not override
-        fed_bs = st.sidebar.number_input("Fed BS (% of GDP)", value=38.0, disabled=disabled)
-        short_rate = st.sidebar.number_input("Real short rate (%)", value=2.5, disabled=disabled)
-        m2 = st.sidebar.number_input("M2 growth YoY (%)", value=6.0, disabled=disabled)
-        deficit = st.sidebar.number_input("Budget deficit (% of GDP)", value=5.0, disabled=disabled)
-        spend = st.sidebar.number_input("Govt spending (% of GDP)", value=24.0, disabled=disabled)
-        transfer = st.sidebar.number_input("Net transfers (% of GDP)", value=12.0, disabled=disabled)
-        geo_idx = st.sidebar.number_input("Geo risk index", value=100.0, disabled=disabled)
-        vix = st.sidebar.number_input("VIX index", value=16.0, disabled=disabled)
-        conflicts = st.sidebar.number_input("Conflict events (#)", value=20, disabled=disabled)
+        fed_bs = st.sidebar.number_input("Fed BS (% of GDP)", 38.0, disabled=disabled)
+        short_rate = st.sidebar.number_input("Real short rate (%)", 2.5, disabled=disabled)
+        m2 = st.sidebar.number_input("M2 growth YoY (%)", 6.0, disabled=disabled)
+        deficit = st.sidebar.number_input("Budget deficit (% of GDP)", 5.0, disabled=disabled)
+        spend = st.sidebar.number_input("Govt spending (% of GDP)", 24.0, disabled=disabled)
+        transfer = st.sidebar.number_input("Net transfers (% of GDP)", 12.0, disabled=disabled)
+        geo_idx = st.sidebar.number_input("Geo risk index", 100.0, disabled=disabled)
+        vix = st.sidebar.number_input("VIX index", 16.0, disabled=disabled)
+        conflicts = st.sidebar.number_input("Conflict events (#)", 20, disabled=disabled)
         liq = normalize_liquidity(fed_bs, short_rate, m2)
         fiscal = normalize_fiscal(deficit, spend, transfer)
         geo = normalize_geo(geo_idx, vix, conflicts)
@@ -92,147 +86,138 @@ def step2_backdrop():
 def step3_regimes(liq, fiscal, geo):
     st.sidebar.header("Regime Probabilities")
     st.sidebar.markdown("*Auto-computed from backdrop, optional override.*")
-    exp_p = max(liq * 0.6 + fiscal * 0.4 - geo * 0.2, 0)
-    rec_p = max((1 - liq) * 0.7 + geo * 0.3, 0)
-    stag_p = max(fiscal * 0.2 + geo * 0.5 + liq * 0.1, 0)
-    defl_p = max((1 - fiscal) * 0.5 + (1 - geo) * 0.5 - liq * 0.2, 0)
+    exp_p = max(liq*0.6 + fiscal*0.4 - geo*0.2, 0)
+    rec_p = max((1-liq)*0.7 + geo*0.3, 0)
+    stag_p = max(fiscal*0.2 + geo*0.5 + liq*0.1, 0)
+    defl_p = max((1-fiscal)*0.5 + (1-geo)*0.5 - liq*0.2, 0)
     total = exp_p + rec_p + stag_p + defl_p
-    auto = {'Expansion': exp_p/total, 'Recession': rec_p/total,
-            'Stagflation': stag_p/total, 'Deflation': defl_p/total}
+    auto = {"Expansion": exp_p/total, "Recession": rec_p/total,
+            "Stagflation": stag_p/total, "Deflation": defl_p/total}
     override = st.sidebar.checkbox("Override probabilities", False)
     probs = {}
-    for r, pct in auto.items():
-        default = int(pct * 100)
-        probs[r] = st.sidebar.number_input(
-            f"P({r})%", min_value=0, max_value=100,
-            value=default, disabled=not override, key=f"prob_{r}"
-        )
+    for r,pct in auto.items():
+        default = int(pct*100)
+        probs[r] = st.sidebar.number_input(f"P({r})%", 0, 100, default, disabled=not override, key=f"prob_{r}")
     if not override:
-        vals = [int(auto[r]*100) for r in auto]
-        diff = 100 - sum(vals)
-        vals[vals.index(max(vals))] += diff
-        probs = dict(zip(auto.keys(), vals))
+        vals=[int(auto[r]*100) for r in auto]
+        vals[vals.index(max(vals))]+=100-sum(vals)
+        probs=dict(zip(auto.keys(),vals))
     return list(auto.keys()), probs
 
 # === Step 4: Portfolio Allocation ===
 def portfolio_editor():
     st.subheader("Portfolio Allocation")
-    col1, col2 = st.columns([3,1])
+    col1,col2=st.columns([3,1])
+    df_init=pd.DataFrame({'Asset':['Equities','Gold','Oil','Bonds','Cash'],
+                          'Pct':[40,20,20,15,5]})
     with col1:
-        df_init = pd.DataFrame({'Asset':['Equities','Gold','Oil','Bonds','Cash'], 'Pct':[40,20,20,15,5]})
-        df = st.data_editor(df_init, use_container_width=True) if hasattr(st,'data_editor') else st.experimental_data_editor(df_init, use_container_width=True)
+        df=st.data_editor(df_init,use_container_width=True) if hasattr(st,'data_editor') else st.experimental_data_editor(df_init,use_container_width=True)
     with col2:
-        equity_beta = st.number_input("Equity Beta", value=1.0, min_value=0.0, step=0.1)
+        equity_beta=st.number_input("Equity Beta",1.0,0.0,step=0.1)
     if abs(df['Pct'].sum()-100)>0.1:
         st.error("Weights must sum to 100%.")
         st.stop()
-    return df, df['Pct'].values/100, equity_beta
+    return df,df['Pct'].values/100,equity_beta
 
 # === Step 5: Scenario Drivers & Valuation ===
-def step5_drivers(eps, spx, rt, m2, liq, fiscal, geo, regimes, probs):
+def step5_drivers(eps,spx,rt,m2,liq,fiscal,geo,regimes,probs):
     st.sidebar.header("Scenario Drivers & Correlations")
-    gdp_def = {'Expansion':3.0,'Recession':-1.0,'Stagflation':1.0,'Deflation':-0.5}
-    rate_def = {'Expansion':0.2,'Recession':1.0,'Stagflation':0.8,'Deflation':-0.2}
-    share_def= {'Expansion':0.0,'Recession':0.02,'Stagflation':0.0,'Deflation':0.0}
-    vals, rets, eps_list, pe_list, corrs = [],[],[],[],{}
+    gdp_def={'Expansion':3.0,'Recession':-1.0,'Stagflation':1.0,'Deflation':-0.5}
+    rate_def={'Expansion':0.2,'Recession':1.0,'Stagflation':0.8,'Deflation':-0.2}
+    share_def={'Expansion':0.0,'Recession':0.02,'Stagflation':0.0,'Deflation':0.0}
+    vals,rets,eps_list,pe_list,corrs=[],[],[],[],{}
     for r in regimes:
-        with st.sidebar.expander(r, True):
-            g = st.number_input(f"GDP {r}%", gdp_def[r], key=f"gdp_{r}")
-            rc=st.number_input(f"Rate shock {r}%", rate_def[r], key=f"rs_{r}")
-            sc=st.number_input(f"Share change {r}%", share_def[r], key=f"sc_{r}")
-            corrs[r]=st.sidebar.slider(f"Eq-Gold corr {r}", -1.0,1.0,-0.2, key=f"corr_{r}")
-        eps_proj = eps*(1+g/100)*(1 - m2*0.005 - rc*0.01) - rc*0.1
-        eps_floor = eps*0.125
-        eps_f = max(eps_proj, eps_floor)*(1-sc)
-        pe_base = 1/((rt/100)+0.04)
-        pe_f = min(40, max(8, pe_base))*(1 + min(MAX_MACRO_PE_IMPACT, liq*0.25+fiscal*0.2-geo*0.3))
-        fv = eps_f * pe_f
+        with st.sidebar.expander(r,True):
+            g=st.number_input(f"GDP {r}%",gdp_def[r],key=f"gdp_{r}")
+            rc=st.number_input(f"Rate shock {r}%",rate_def[r],key=f"rs_{r}")
+            sc=st.number_input(f"Share change {r}%",share_def[r],key=f"sc_{r}")
+            corrs[r]=st.sidebar.slider(f"Eq-Gold corr {r}",-1.0,1.0,-0.2,key=f"corr_{r}")
+        proj=eps*(1+g/100)*(1-m2*0.005-rc*0.01)-rc*0.1
+        floor=eps*0.125
+        eps_f=max(proj,floor)*(1-sc)
+        pe_base=1/((rt/100)+0.04)
+        pe_f=min(40,max(8,pe_base))*(1+min(MAX_MACRO_PE_IMPACT,liq*0.25+fiscal*0.2-geo*0.3))
+        fv=eps_f*pe_f
         vals.append(fv)
         rets.append(fv/spx-1)
         eps_list.append(eps_f)
         pe_list.append(pe_f)
-    return vals, rets, eps_list, pe_list, corrs
+    return vals,rets,eps_list,pe_list,corrs
 
 # === Step 6: Anchor Drivers & Assumptions ===
 def step6_anchors_inputs():
     st.sidebar.header("Anchor Drivers & Assumptions")
     st.sidebar.markdown("*Inputs for valuation & asset price anchors.*")
-    vix = st.sidebar.number_input("VIX for Gold", value=16.0)
-    inv = st.sidebar.number_input("Oil inventory change (%)", value=0.0)
-    opec = st.sidebar.slider("OPEC quota adjustment", -1.0,1.0,0.0)
-    pmi = st.sidebar.number_input("Global PMI", value=50.0)
-    return viz, inv, opec, pmi
+    vix=st.sidebar.number_input("VIX for Gold",16.0)
+    inv=st.sidebar.number_input("Oil inventory change (%)",0.0)
+    opec=st.sidebar.slider("OPEC quota adjustment",-1.0,1.0,0.0)
+    pmi=st.sidebar.number_input("Global PMI",50.0)
+    return vix,inv,opec,pmi
 
 # === Price Functions ===
-def price_gold(rt_pct, viz, geo_score, eq_corr):
-    return 2000*(1-rt_pct*0.1) + viz*10 + geo_score*300 - eq_corr*200
+def price_gold(rt_pct,vix,geo,eq_corr):
+    return 2000*(1-rt_pct*0.1)+vix*10+geo*300-eq_corr*200
 
-def price_oil(inv, opec, pmi, geo_score):
-    p_term = (pmi-50)/100
-    geo_term = (geo_score-0.3)*100
-    base = 80*(1 + p_term - inv/100)
-    return base + opec*80 + geo_term
+def price_oil(inv,opec,pmi,geo):
+    p_term=(pmi-50)/100
+    geo_term=(geo-0.3)*100
+    base=80*(1+p_term-inv/100)
+    return base+opec*80+geo_term
 
 # === Step 7: 10-Year Yield via Nelson–Siegel ===
-def nelson_siegel_yield(short_rate_pct, tau=10, beta0=0.02, beta1=0.03, beta2=0.01, lam=0.6):
-    level = short_rate_pct/100
-    slope = beta1*(1-np.exp(-lam*tau))/(lam*tau)
-    curve = beta2*((1-np.exp(-lam*tau))/(lam*tau)-np.exp(-lam*tau))
-    return level + slope + curve
+def nelson_siegel_yield(short_rate_pct,tau=10,beta0=0.02,beta1=0.03,beta2=0.01,lam=0.6):
+    level=short_rate_pct/100
+    slope=beta1*(1-np.exp(-lam*tau))/(lam*tau)
+    curve=beta2*((1-np.exp(-lam*tau))/(lam*tau)-np.exp(-lam*tau))
+    return level+slope+curve
 
 # === Main Application ===
 def run():
-    eps, spx, a_gold, a_oil, a_10y, geo_ev = step1_market()
-    liq, fiscal, geo, rt, m2 = step2_backdrop()
-    regimes, probs = step3_regimes(liq, fiscal, geo)
-    vals, rets, eps_ls, pe_ls, corrs = step5_drivers(eps, spx, rt, m2, liq, fiscal, geo, regimes, probs)
-    w_eps = sum(probs[r]/100 * eps_ls[i] for i,r in enumerate(regimes))
-    w_pe = sum(probs[r]/100 * pe_ls[i] for i,r in enumerate(regimes))
-    fair_spx = w_eps * w_pe
-    dfv = pd.DataFrame({'Regime':regimes,'Fair SPX':vals,'Return%':rets,'P%':[probs[r] for r in regimes]})
+    eps,spx,a_gold,a_oil,a_10y,geo_ev=step1_market()
+    liq,fiscal,geo,rt,m2=step2_backdrop()
+    regimes,probs=step3_regimes(liq,fiscal,geo)
+    vals,rets,eps_ls,pe_ls,corrs=step5_drivers(eps,spx,rt,m2,liq,fiscal,geo,regimes,probs)
+    w_eps=sum(probs[r]/100*eps_ls[i] for i,r in enumerate(regimes))
+    w_pe=sum(probs[r]/100*pe_ls[i] for i,r in enumerate(regimes))
+    fair_spx=w_eps*w_pe
+    dfv=pd.DataFrame({'Regime':regimes,'Fair SPX':vals,'Return%':rets,'P%':[probs[r] for r in regimes]})
     dfv['Fair SPX']=dfv['Fair SPX'].apply(lambda x:f"${x:,.0f}")
     dfv['Return%']=dfv['Return%'].apply(lambda x:f"{x:.1%}")
     dfv['P%']=dfv['P%'].apply(lambda x:f"{x:.1f}%")
     st.subheader("Regime Fair-Value Table")
     st.table(dfv)
-    viz, inv, opec, pmi = step6_anchors_inputs()
-    avg_geo = np.mean(list(geo_ev.values()))
-    avg_corr = np.mean(list(corrs.values()))
-    gold_m = price_gold(rt, viz, avg_geo, avg_corr)
-    oil_m  = price_oil(inv, opec, pmi, avg_geo)
-    bond_y = nelson_siegel_yield(rt)
-    anchors = pd.DataFrame(
+    vix,inv,opec,pmi=step6_anchors_inputs()
+    avg_geo=np.mean(list(geo_ev.values()))
+    avg_corr=np.mean(list(corrs.values()))
+    gold_m=price_gold(rt,vix,avg_geo,avg_corr)
+    oil_m=price_oil(inv,opec,pmi,avg_geo)
+    bond_y=nelson_siegel_yield(rt)
+    anchors=pd.DataFrame(
         index=["SPX","Weighted EPS","Weighted P/E","Gold","Oil","10Y Yield"],
         data={
-            "Actual":[spx, eps, spx/eps, a_gold, a_oil, a_10y/100],
-            "Model": [fair_spx, w_eps, w_pe, gold_m, oil_m, bond_y]
+            "Actual":[spx,eps,spx/eps,a_gold,a_oil,a_10y/100],
+            "Model":[fair_spx,w_eps,w_pe,gold_m,oil_m,bond_y]
         }
     )
-    fmt = anchors.copy()
+    fmt=anchors.copy()
     for m in fmt.index:
         for c in fmt.columns:
-            v = anchors.loc[m, c]
-            if m in ["SPX","Weighted EPS","Gold","Oil"]:
-                fmt.loc[m, c] = f"${v:,.0f}"
-            elif m == "Weighted P/E":
-                fmt.loc[m, c] = f"{v:.1f}"
-            else:
-                fmt.loc[m, c] = f"{v:.1%}"
+            v=anchors.loc[m,c]
+            if m in ["SPX","Weighted EPS","Gold","Oil"]: fmt.loc[m,c]=f"${v:,.0f}"
+            elif m=="Weighted P/E": fmt.loc[m,c]=f"{v:.1f}"
+            else: fmt.loc[m,c]=f"{v:.1%}"
     st.subheader("Valuation & Asset Price Anchors")
     st.table(fmt)
-    dfp, alloc, beta = portfolio_editor()
-    exp_eq = sum(probs[r]/100 * rets[i] for i,r in enumerate(regimes)) * beta
-    ret_asset = np.array([exp_eq, gold_m/a_gold-1, oil_m/a_oil-1, bond_y, DEFAULT_CASH_YIELD])
-    exp_ret = alloc @ ret_asset
+    dfp,alloc,beta=portfolio_editor()
+    exp_eq=sum(probs[r]/100*rets[i] for i,r in enumerate(regimes))*beta
+    ret_asset=np.array([exp_eq,gold_m/a_gold-1,oil_m/a_oil-1,bond_y,DEFAULT_CASH_YIELD])
+    exp_ret=alloc@ret_asset
     st.subheader("Expected Portfolio Return")
-    st.metric("Expected Return", f"{exp_ret:.2%}")
-    vols = np.array([0.15,0.10,0.12,0.08,0.00])
-    cov = np.diag(vols) @ np.array(
-        [[1,avg_corr,0,0,0],[avg_corr,1,0,0,0],[0,0,1,0,0],[0,0,0,1,0],[0,0,0,0,1]]
-    ) @ np.diag(vols)
-    sims = np.random.multivariate_normal(ret_asset, cov, 3000)
+    st.metric("Expected Return",f"{exp_ret:.2%}")
+    vols=np.array([0.15,0.10,0.12,0.08,0.00])
+    cov=np.diag(vols)@np.array([[1,avg_corr,0,0,0],[avg_corr,1,0,0,0],[0,0,1,0,0],[0,0,0,1,0],[0,0,0,0,1]])@np.diag(vols)
+    sims=np.random.multivariate_normal(ret_asset,cov,3000)
     st.subheader("Portfolio MC Distribution")
     st.line_chart(pd.Series(sims.mean(axis=1)).rolling(50).mean())
 
-if __name__ == '__main__':
-    run()
+if __name__=='__main__': run()
