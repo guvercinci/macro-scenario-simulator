@@ -100,27 +100,31 @@ def step3_regimes(liq, fiscal, geo):
     rec_p = max((1 - liq) * 0.7 + geo * 0.3, 0)
     stag_p = max(fiscal * 0.2 + geo * 0.5 + liq * 0.1, 0)
     defl_p = max((1 - fiscal) * 0.5 + (1 - geo) * 0.5 - liq * 0.2, 0)
-    total = exp_p + rec_p + stag_p + defl_p
-    auto = {'Expansion': exp_p / total, 'Recession': rec_p / total,
-            'Stagflation': stag_p / total, 'Deflation': defl_p / total}
+    total_score = exp_p + rec_p + stag_p + defl_p
+    auto = {'Expansion': exp_p / total_score, 'Recession': rec_p / total_score,
+            'Stagflation': stag_p / total_score, 'Deflation': defl_p / total_score}
     override = st.sidebar.checkbox("Override probabilities", False)
     probs = {}
-    if override:
-        # manual sliders
-        for r, pct in auto.items():
-            probs[r] = st.sidebar.slider(f"P({r})%", 0, 100, int(pct * 100), key=f"prob_{r}")
-        total = sum(probs.values())
-        st.sidebar.markdown(f"**Total Probability: {total}%**")
-        if total != 100:
-            st.sidebar.error("Probabilities must sum to 100%.")
-            st.stop()
-    else:
-        # integer defaults, adjust to sum 100
-        defaults = {r: int(pct * 100) for r, pct in auto.items()}
-        s = sum(defaults.values())
-        diff = 100 - s
+    # Always show inputs (disabled if not override)
+    for r, pct in auto.items():
+        default = int(pct * 100)
+        probs[r] = st.sidebar.number_input(
+            f"P({r})%", min_value=0, max_value=100, value=default,
+            disabled=not override, key=f"prob_{r}"
+        )
+    # Show total always
+    total = sum(probs.values())
+    st.sidebar.markdown(f"**Total Probability: {total}%**")
+    # If override, enforce sum=100
+    if override and total != 100:
+        st.sidebar.error("Probabilities must sum to 100% when overriding.")
+        st.stop()
+    # If not overriding, normalize defaults to sum 100
+    if not override:
+        defaults = {r: int(auto[r] * 100) for r in auto}
+        diff = 100 - sum(defaults.values())
         if diff != 0:
-            key_max = max(auto, key=auto.get)
+            key_max = max(defaults, key=defaults.get)
             defaults[key_max] += diff
         probs = defaults
     return list(auto.keys()), probs
