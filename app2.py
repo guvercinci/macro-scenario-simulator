@@ -22,6 +22,12 @@ openai.api_key = st.secrets.get("OPENAI_API_KEY", "")
 if has_openai:
     def generate_macro_analysis(inputs: dict) -> str:
         prompt = (
+        "Given these macro inputs, write a concise CNBC-style summary of the current environment and likely outlook.
+"
+        f"Inputs: {inputs}
+"
+        "Focus on liquidity, fiscal stance, geo-risk, rates, and regime probabilities."
+    )
             "Given these macro inputs, write a concise CNBC-style summary of the current environment and likely outlook.
 "
             f"Inputs: {inputs}
