@@ -128,35 +128,65 @@ def portfolio_editor():
 # === Step 5: Scenario Drivers & Valuation ===
 def step5_drivers(eps, spx, rt, m2, liq, fiscal, geo, regimes, probs):
     st.sidebar.header("Scenario Drivers & Correlations")
-    gdp_def   = {'Expansion':2.0, 'Recession':-2.0, 'Stagflation':-1.0, 'Deflation':-3.0}
-    rate_def  = {'Expansion':1.0, 'Recession':-3.0, 'Stagflation':2.0,  'Deflation':-4.0}
-    share_def = {'Expansion':0.0, 'Recession':0.0, 'Stagflation':-0.15, 'Deflation':-0.25}
-    corr_def  = {'Expansion':0.0, 'Recession':-0.5, 'Stagflation':-0.7, 'Deflation':-0.2}
+    # Define regime-specific shock defaults
+    gdp_def = {
+        'Expansion':   2.0,
+        'Recession':  -2.0,
+        'Stagflation':-1.0,
+        'Deflation':  -3.0
+    }
+    rate_def = {
+        'Expansion':   1.0,
+        'Recession':  -3.0,
+        'Stagflation': 2.0,
+        'Deflation':  -4.0
+    }
+    # Neutralize share change impact for all regimes
+            # Realistic share change: buybacks in expansion, small issuance in recession
+        share_def = {
+            'Expansion':   -0.05,   # 5% EPS boost from buybacks in expansion
+            'Recession':    0.02,   # 2% EPS dilution from issuance in recession
+            'Stagflation':  0.00,   # negligible share change
+            'Deflation':    0.00    # negligible share change
+        }
+    corr_def = {
+        'Expansion':   0.0,
+        'Recession':  -0.5,
+        'Stagflation':-0.7,
+        'Deflation':  -0.2
+    }
+
     values, rets, eps_list, pe_list, corrs = [], [], [], [], {}
     for r in regimes:
         with st.sidebar.expander(r, True):
+            # User overrides for each regime
             g  = st.number_input(f"GDP {r}%", gdp_def[r], key=f"gdp_{r}")
             rc = st.number_input(f"Rate shock {r}%", rate_def[r], key=f"rs_{r}")
             sc = st.number_input(f"Share change {r}%", share_def[r], key=f"sc_{r}")
             corrs[r] = st.sidebar.slider(f"Eq-Gold corr {r}", -1.0, 1.0, corr_def[r], key=f"corr_{r}")
+        # Separate rate hikes vs cuts
         rate_hike = max(rc, 0)
         rate_cut  = -min(rc, 0)
+        # Project EPS
         proj = eps * (1 + g/100)
         proj *= (1 - m2 * 0.005 - rate_hike * 0.01)
         proj -= rate_hike * 0.1
-        proj += rate_cut * 0.02
+        proj += rate_cut * 0.02  # modest uplift from rate cuts
         eps_floor = eps * 0.125
         eps_f     = max(proj, eps_floor) * (1 - sc)
-        pe_base   = 1 / ((rt/100) + 0.04)
-        pe_f      = min(40, max(8, pe_base)) * (1 + min(MAX_MACRO_PE_IMPACT, liq * 0.25 + fiscal * 0.2 - geo * 0.3))
-        fv        = eps_f * pe_f
+        # Determine P/E
+        pe_base = 1 / ((rt/100) + 0.04)
+        pe_f    = min(40, max(8, pe_base)) * (1 + min(MAX_MACRO_PE_IMPACT,
+                          liq * 0.25 + fiscal * 0.2 - geo * 0.3))
+        # Fair-value and returns
+        fv = eps_f * pe_f
         values.append(fv)
-        rets.append(fv/spx - 1)
+        rets.append(fv / spx - 1)
         eps_list.append(eps_f)
         pe_list.append(pe_f)
     return values, rets, eps_list, pe_list, corrs
 
-# === Step 6: Anchor Drivers & Assumptions ===
+# === Step 6: Anchor Drivers & Assumptions ===: Anchor Drivers & Assumptions ===
 def step6_anchors_inputs():
     st.sidebar.header("Anchor Drivers & Assumptions")
     st.sidebar.markdown("*Inputs for valuation & asset price anchors.*")
