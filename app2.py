@@ -208,30 +208,28 @@ def run():
     gold_price = price_gold(rt, vix_model, sum(geo_events.values()), avg_corr)
     oil_price = price_oil(inv_change, opec_quota, pmi_model, sum(geo_events.values()))
     bond_yield = nelson_siegel(rt)
+        # Valuation & Asset Price Anchors
     anchors = pd.DataFrame(
-    index=["SPX", "Weighted EPS", "Weighted P/E", "Gold", "Oil", "10Y Yield"],
-    data={
-        "Actual": [spx, eps, spx/eps, a_gold, a_oil, a_10y/100],
-        "Model": [fair_spx, weighted_eps, weighted_pe, gold_price, oil_price, bond_yield]
-    }
-)
-# Format currency and percentage displays
-fmt_anchors = anchors.copy()
-for metric in fmt_anchors.index:
-    for col in fmt_anchors.columns:
-        val = anchors.loc[metric, col]
-        if metric in ["SPX", "Weighted EPS", "Gold", "Oil"]:
-            fmt_anchors.loc[metric, col] = f"${val:,.0f}"
-        elif metric == "Weighted P/E":
-            fmt_anchors.loc[metric, col] = f"{val:.1f}"
-        elif metric == "10Y Yield":
-            fmt_anchors.loc[metric, col] = f"{val:.1%}"
-
-st.subheader("Valuation & Asset Price Anchors")
-st.table(fmt_anchors)
-st.table(fmt_anchors)
+        index=["SPX", "Weighted EPS", "Weighted P/E", "Gold", "Oil", "10Y Yield"],
+        data={
+            "Actual": [spx, eps, spx/eps, a_gold, a_oil, a_10y/100],
+            "Model": [fair_spx, weighted_eps, weighted_pe, gold_price, oil_price, bond_yield]
+        }
+    )
+    # Format currency and percentage displays
+    fmt_anchors = anchors.copy()
+    for metric in fmt_anchors.index:
+        for col in fmt_anchors.columns:
+            val = anchors.loc[metric, col]
+            if metric in ["SPX", "Weighted EPS", "Gold", "Oil"]:
+                fmt_anchors.loc[metric, col] = f"${val:,.0f}"
+            elif metric == "Weighted P/E":
+                fmt_anchors.loc[metric, col] = f"{val:.1f}"
+            elif metric == "10Y Yield":
+                fmt_anchors.loc[metric, col] = f"{val:.1%}"
     st.subheader("Valuation & Asset Price Anchors")
-    st.table(anchors.style.format({"Actual": "{:.2f}", "Model": "{:.2f}"}))
+    st.table(fmt_anchors)
+    # Portfolio Allocation
     dfp, alloc = portfolio_editor()
     exp_eq = sum(probs[r] / 100 * rets[i] for i, r in enumerate(regimes))
     ret_asset = np.array([exp_eq, gold_price / a_gold - 1, oil_price / a_oil - 1, bond_yield, DEFAULT_CASH_YIELD])
