@@ -152,11 +152,12 @@ def step5_drivers(eps, spx, rt, m2, liq, fiscal, geo, regimes, probs):
             ratec = st.number_input(f"Rate shock {reg}%", rate_def[reg], key=f"rs_{reg}")
             sharec = st.number_input(f"Share change {reg}%", share_def[reg], key=f"sc_{reg}")
             corr_vals[reg] = st.sidebar.slider(f"Eq-Gold correlation {reg}", -1.0, 1.0, -0.2, key=f"corr_{reg}")
+        # compute projected EPS, P/E, fair SPX, and return
         eps_f = eps_proj(eps, gdp, m2, ratec, sharec)
         pe_f = pe_from_real(rt) * macro_mult(liq, fiscal, geo)
         fair_reg = eps_f * pe_f
         values.append(fair_reg)
-        rets.append(fair_reg / spx * equity_beta - 1 if reg == 'Expansion' else fair_reg / spx - 1)
+        rets.append(fair_reg / spx - 1)
         eps_list.append(eps_f)
         pe_list.append(pe_f)
     return values, rets, eps_list, pe_list, corr_vals
