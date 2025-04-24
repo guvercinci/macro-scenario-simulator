@@ -95,6 +95,7 @@ def step2_backdrop():
 def step3_regimes(liq, fiscal, geo):
     st.sidebar.header("Regime Probabilities")
     st.sidebar.markdown("*Auto-computed from backdrop, optional override.*")
+    # Raw score calculations
     exp_p = max(liq * 0.6 + fiscal * 0.4 - geo * 0.2, 0)
     rec_p = max((1 - liq) * 0.7 + geo * 0.3, 0)
     stag_p = max(fiscal * 0.2 + geo * 0.5 + liq * 0.1, 0)
@@ -104,14 +105,22 @@ def step3_regimes(liq, fiscal, geo):
             'Stagflation': stag_p / total, 'Deflation': defl_p / total}
     override = st.sidebar.checkbox("Override probabilities", False)
     probs = {}
-    for r, pct in auto.items():
-        default = int(pct * 100)
-        probs[r] = st.sidebar.slider(f"P({r})%", 0, 100, default, disabled=not override)
-    if not override:
-        probs = {r: int(p * 100) for r, p in auto.items()}
-    if override and sum(probs.values()) != 100:
-        st.sidebar.error("Probabilities must sum to 100%.")
-        st.stop()
+    if override:
+        # manual sliders
+        for r, pct in auto.items():
+            probs[r] = st.sidebar.slider(f"P({r})%", 0, 100, int(pct * 100), key=f"prob_{r}")
+        if sum(probs.values()) != 100:
+            st.sidebar.error("Probabilities must sum to 100%.")
+            st.stop()
+    else:
+        # integer defaults, adjust to sum 100
+        defaults = {r: int(pct * 100) for r, pct in auto.items()}
+        s = sum(defaults.values())
+        diff = 100 - s
+        if diff != 0:
+            key_max = max(auto, key=auto.get)
+            defaults[key_max] += diff
+        probs = defaults
     return list(auto.keys()), probs
 
 # === Portfolio Allocation ===
