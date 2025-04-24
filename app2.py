@@ -1,5 +1,3 @@
-# app.py — Macro Scenario Simulator: easy, guided, and transparent
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -141,7 +139,7 @@ def portfolio_editor():
 
 # === Scenario Drivers & Correlations ===
 def step5_drivers(eps, spx, rt, m2, liq, fiscal, geo, regimes, probs):
-    st.sidebar.header("Scenario Drivers & Correlations")
+    st.sidebar.header("Scenario Drivers & Collaborations")
     gdp_def = {'Expansion': 3.0, 'Recession': -1.0, 'Stagflation': 1.0, 'Deflation': -0.5}
     rate_def = {'Expansion': 0.2, 'Recession': 1.0, 'Stagflation': 0.8, 'Deflation': -0.2}
     share_def = {'Expansion': 0.0, 'Recession': 0.02, 'Stagflation': 0.0, 'Deflation': 0.0}
@@ -150,7 +148,7 @@ def step5_drivers(eps, spx, rt, m2, liq, fiscal, geo, regimes, probs):
         with st.sidebar.expander(reg, True):
             gdp = st.number_input(f"GDP {reg}%", gdp_def[reg], key=f"gdp_{reg}")
             ratec = st.number_input(f"Rate shock {reg}%", rate_def[reg], key=f"rs_{reg}")
-            sharec = st.number_input(f"Share change {reg}%", share_def[reg], key=f"sc_{reg}")
+            sharec = st.number_input(f"Share change {reg}%", share_def[reg], key/sc_{reg}")
             corr_vals[reg] = st.sidebar.slider(f"Eq-Gold correlation {reg}", -1.0, 1.0, -0.2, key=f"corr_{reg}")
         eps_f = eps_proj(eps, gdp, m2, ratec, sharec)
         pe_f = pe_from_real(rt) * macro_mult(liq, fiscal, geo)
@@ -242,8 +240,11 @@ def run():
     vix_model, inv_change, opec_quota, pmi_model = step6_anchors_inputs()
     avg_corr = sum((probs[r] / 100) * corr_vals[r] for r in regimes)
 
+    # compute an average geo score rather than summing
+    geo_score_avg = np.mean(list(geo_events.values()))
+
     gold_price = price_gold(rt, vix_model, sum(geo_events.values()), avg_corr)
-    oil_price  = price_oil(inv_change, opec_quota, pmi_model, sum(geo_events.values()))
+    oil_price  = price_oil(inv_change, opec_quota, pmi_model, geo_score_avg)
     bond_yield = nelson_siegel(rt)
 
     anchors = pd.DataFrame(
