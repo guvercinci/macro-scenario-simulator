@@ -7,7 +7,7 @@ st.set_page_config(page_title="Macro Scenario Simulator", layout="wide")
 st.title("Macro Scenario Simulator")
 st.markdown(
     "This interactive tool helps you stress-test a portfolio across different economic regimes. "
-    "Use the sidebar titles to enter market prices, set the macro backdrop, "
+    "Use the sidebar to input market prices, set the macro backdrop, "
     "adjust scenario drivers, and visualize fair-value estimates and risk distributions."
 )
 
@@ -103,8 +103,10 @@ def step3_regimes(liq, fiscal, geo):
     probs = {}
     for r, pct in auto.items():
         default = int(pct * 100)
-        probs[r] = st.sidebar.number_input(f"P({r})%", min_value=0, max_value=100,
-                                            value=default, disabled=not override, key=f"prob_{r}")
+        probs[r] = st.sidebar.number_input(
+            f"P({r})%", min_value=0, max_value=100,
+            value=default, disabled=not override, key=f"prob_{r}"
+        )
     if not override:
         vals = [int(auto[r]*100) for r in auto]
         diff = 100 - sum(vals)
@@ -152,8 +154,7 @@ def step5_drivers(eps, spx, rt, m2, liq, fiscal, geo, regimes, probs):
         pe_list.append(pe_f)
     return values, rets, eps_list, pe_list, corrs
 
-# === Step 6: Anchor Drivers & Assumptions ===
-def step6_anchors_inputs():
+# === Step 6: Anchor Drivers & Assumptions ===\def step6_anchors_inputs():
     st.sidebar.header("Anchor Drivers & Assumptions")
     st.sidebar.markdown("*Inputs for valuation & asset price anchors.*")
     vix = st.sidebar.number_input("VIX for Gold", value=16.0)
@@ -172,9 +173,13 @@ def price_oil(inv, opec, pmi, geo_score):
     base     = 80*(1 + p_term - inv/100)
     return base + opec*80 + geo_term
 
-def nelson_siegel(rt_pct):
-    rt = rt_pct/100
-    return 1 - ((1 - np.exp(-rt))/rt) + 0.5*(((1 - np.exp(-rt))/rt) - np.exp(-rt))
+# === Step 7: 10-Year Yield via Nelson–Siegel ===
+def nelson_siegel_yield(short_rate_pct, tau=10, beta0=0.02, beta1=0.03, beta2=0.01, lam=0.6):
+    # Use short_rate_pct as level component
+    level = short_rate_pct/100
+    slope = beta1 * (1 - np.exp(-lam*tau)) / (lam*tau)
+    curve = beta2 * ((1 - np.exp(-lam*tau)) / (lam*tau) - np.exp(-lam*tau))
+    return level + slope + curve
 
 # === Main Application ===
 def run():
@@ -185,18 +190,26 @@ def run():
     w_eps = sum(probs[r]/100 * eps_ls[i] for i,r in enumerate(regimes))
     w_pe  = sum(probs[r]/100 * pe_ls[i] for i,r in enumerate(regimes))
     fair_spx = w_eps * w_pe
-    dfv = pd.DataFrame({'Regime':regimes, 'Fair SPX':vals, 'Return%':rets, 'P%':[probs[r] for r in regimes]})
+    # Regime Fair-Value Table
+    dfv = pd.DataFrame({
+        'Regime': regimes,
+        'Fair SPX': vals,
+        'Return%': rets,
+        'P%': [probs[r] for r in regimes]
+    })
     dfv['Fair SPX'] = dfv['Fair SPX'].apply(lambda x: f"${x:,.0f}")
     dfv['Return%']  = dfv['Return%'].apply(lambda x: f"{x:.1%}")
     dfv['P%']       = dfv['P%'].apply(lambda x: f"{x:.1f}%")
     st.subheader("Regime Fair-Value Table")
     st.table(dfv)
+    # Anchors
     vix, inv, opec, pmi = step6_anchors_inputs()
     avg_geo = np.mean(list(geo_ev.values()))
     avg_corr = np.mean(list(corrs.values()))
     gold_m = price_gold(rt, vix, avg_geo, avg_corr)
     oil_m  = price_oil(inv, opec, pmi, avg_geo)
-    bond_y = nelson_siegel(rt)
+    # 10-Year yield modeled via Nelson–Siegel
+    bond_y = nelson_siegel_yield(rt)
     anchors = pd.DataFrame(
         index=["SPX","Weighted EPS","Weighted P/E","Gold","Oil","10Y Yield"],
         data={
@@ -208,11 +221,15 @@ def run():
     for m in fmt.index:
         for c in fmt.columns:
             v = anchors.loc[m,c]
-            if m in ["SPX","Weighted EPS","Gold","Oil"]: fmt.loc[m,c] = f"${v:,.0f}"
-            elif m=="Weighted P/E": fmt.loc[m,c] = f"{v:.1f}"
-            else: fmt.loc[m,c] = f"{v:.1%}"
+            if m in ["SPX","Weighted EPS","Gold","Oil"]:
+                fmt.loc[m,c] = f"${v:,.0f}"
+            elif m == "Weighted P/E":
+                fmt.loc[m,c] = f"{v:.1f}"
+            else:
+                fmt.loc[m,c] = f"{v:.1%}"
     st.subheader("Valuation & Asset Price Anchors")
     st.table(fmt)
+    # Portfolio & Simulation
     dfp, alloc, beta = portfolio_editor()
     exp_eq = sum(probs[r]/100 * rets[i] for i,r in enumerate(regimes)) * beta
     ret_asset = np.array([exp_eq, gold_m/a_gold-1, oil_m/a_oil-1, bond_y, DEFAULT_CASH_YIELD])
