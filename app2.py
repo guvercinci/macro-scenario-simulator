@@ -127,52 +127,8 @@ def portfolio_editor():
         st.stop()
     return df, df['Pct'].values / 100
 
-# === Helper Functions ===
-def pe_from_real(rate_pct, prem=0.04):
-    real_rate = rate_pct / 100.0
-    req = real_rate + prem
-    pe = 1 / req if req > 0 else float('inf')
-    return min(40, max(8, pe))
-
-def nelson_siegel(rt):
-    return 1 - ((1 - np.exp(-rt)) / rt) + 0.5 * (((1 - np.exp(-rt)) / rt) - np.exp(-rt))
-
-def price_gold(rt, vix, geo_score, eq_gold_corr):
-    """
-    *Prices gold by incorporating real rates, VIX safe-haven premium, geopolitical risk, and equity-gold correlation (negative corr boosts safe-haven demand).* 
-    """
-    base = 2000 * (1 - rt * 0.1)
-    vix_term = vix * 10
-    geo_term = geo_score * 300
-    corr_term = -eq_gold_corr * 200  # negative correlation increases gold demand
-    return base + vix_term + geo_term + corr_term
-    return 2000 * (1 - rt * 0.1) + vix * 10 + geo_score * 300
-
-def price_oil(inv, opec, pmi, geo_score):
-    return 80 * (1 + pmi / 100 - inv / 100) + opec * 80 + geo_score * 50
-
-def eps_proj(eps, gdp, inf, ratec, sharec):
-    rev = eps * (1 + gdp / 100)
-    marg = rev * (1 - inf * 0.005 - ratec * 0.01)
-    debt = ratec * 0.1
-    floor = eps * 0.125
-    return max(marg - debt, floor) * (1 - sharec)
-
-def macro_mult(liq, fiscal, geo):
-    impact = liq * 0.25 + fiscal * 0.2 - geo * 0.3
-    return 1 + min(MAX_MACRO_PE_IMPACT, impact)
-
-def simulate(alloc, ret, cov, sims=3000):
-    draws = np.random.multivariate_normal(ret, cov, sims)
-    return (draws * alloc).sum(axis=1)
-
-# === Main Application ===
-def run():
-    eps, spx, a_gold, a_oil, a_10y, geo_events = step1_market()
-    liq, fiscal, geo, rt, m2 = step2_backdrop()
-    regimes, probs = step3_regimes(liq, fiscal, geo)
-
-    # Step 5: Scenario Drivers & Correlations
+# === Step 5: Scenario Drivers & Correlations ===
+def step5_drivers():
     st.sidebar.header("Step 5: Scenario Drivers & Correlations")
     gdp_def = {'Expansion': 3.0, 'Recession': -1.0, 'Stagflation': 1.0, 'Deflation': -0.5}
     rate_def = {'Expansion': 0.2, 'Recession': 1.0, 'Stagflation': 0.8, 'Deflation': -0.2}
@@ -191,32 +147,83 @@ def run():
         rets.append(fair_reg / spx - 1)
         eps_list.append(eps_f)
         pe_list.append(pe_f)
+    return values, rets, eps_list, pe_list, corr_vals
 
-    # Weighted EPS, P/E, fair SPX
+# === Step 6: Anchor Drivers & Assumptions ===
+def step6_anchors_inputs():
+    st.sidebar.header("Step 6: Anchor Drivers & Assumptions")
+    st.sidebar.markdown("*Set inputs used in the Valuation & Asset Price Anchors section.*")
+    vix_model = st.sidebar.number_input("VIX for Gold", value=16.0)
+    inv_change = st.sidebar.number_input("Oil inv change (%)", value=0.0)
+    opec_quota = st.sidebar.slider("OPEC quota", -1.0, 1.0, 0.0)
+    pmi_model = st.sidebar.number_input("Global PMI", value=50.0)
+    return vix_model, inv_change, opec_quota, pmi_model
+
+# === Helper Functions ===
+def pe_from_real(rate_pct, prem=0.04):
+    real_rate = rate_pct / 100.0
+    req = real_rate + prem
+    pe = 1 / req if req > 0 else float('inf')
+    return min(40, max(8, pe))
+def nelson_siegel(rt): return 1 - ((1 - np.exp(-rt)) / rt) + 0.5 * (((1 - np.exp(-rt)) / rt) - np.exp(-rt))
+
+def price_gold(rt, vix, geo_score, eq_gold_corr):
+    base = 2000 * (1 - rt * 0.1)
+    vix_term = vix * 10
+    geo_term = geo_score * 300
+    corr_term = -eq_gold_corr * 200
+    return base + vix_term + geo_term + corr_term
+
+def price_oil(inv, opec, pmi, geo_score): return 80 * (1 + pmi / 100 - inv / 100) + opec * 80 + geo_score * 50
+def eps_proj(eps, gdp, inf, ratec, sharec):
+    rev = eps * (1 + gdp / 100)
+    marg = rev * (1 - inf * 0.005 - ratec * 0.01)
+    debt = ratec * 0.1
+    floor = eps * 0.125
+    return max(marg - debt, floor) * (1 - sharec)
+def macro_mult(liq, fiscal, geo): return 1 + min(MAX_MACRO_PE_IMPACT, liq * 0.25 + fiscal * 0.2 - geo * 0.3)
+def simulate(alloc, ret, cov, sims=3000): draws = np.random.multivariate_normal(ret, cov, sims); return (draws * alloc).sum(axis=1)
+
+# === Main Application ===
+
+def run():
+    # Steps 1-3
+    eps, spx, a_gold, a_oil, a_10y, geo_events = step1_market()
+    liq, fiscal, geo, rt, m2 = step2_backdrop()
+    global regimes
+    regimes, probs = step3_regimes(liq, fiscal, geo)
+
+    # Step 5 drivers
+    values, rets, eps_list, pe_list, corr_vals = step5_drivers()
+
+    # Weighted EPS/P/E & fair SPX
     weighted_eps = sum(probs[r] / 100 * eps_list[i] for i, r in enumerate(regimes))
     weighted_pe = sum(probs[r] / 100 * pe_list[i] for i, r in enumerate(regimes))
     fair_spx = weighted_eps * weighted_pe
 
+    # Display regime table
     dfv = pd.DataFrame({'Regime': regimes, 'Fair SPX': values, 'Return%': rets, 'P%': [probs[r] for r in regimes]})
     st.write(dfv)
 
-    # Step 6: Valuation & Asset Anchors
-    # compute weighted equity-gold correlation for anchors
-    avg_corr = sum((probs[r]/100.0) * corr_vals[r] for r in regimes)
+    # Step 6 anchors inputs
+    vix_model, inv_change, opec_quota, pmi_model = step6_anchors_inputs()
+    avg_corr = sum((probs[r] / 100) * corr_vals[r] for r in regimes)
+
+    # Step 6 anchors
     gold_price = price_gold(rt, vix_model, sum(geo_events.values()), avg_corr)
     oil_price = price_oil(inv_change, opec_quota, pmi_model, sum(geo_events.values()))
     bond_yield = nelson_siegel(rt)
     anchors = pd.DataFrame(
-        index=["SPX","Weighted EPS","Weighted P/E","Gold","Oil","10Y Yield"],
+        index=["SPX", "Weighted EPS", "Weighted P/E", "Gold", "Oil", "10Y Yield"],
         data={
-            "Actual": [spx, eps, spx/eps, a_gold, a_oil, a_10y/100],
+            "Actual": [spx, eps, spx / eps, a_gold, a_oil, a_10y / 100],
             "Model": [fair_spx, weighted_eps, weighted_pe, gold_price, oil_price, bond_yield]
         }
     )
     st.subheader("Step 6: Valuation & Asset Price Anchors")
     st.table(anchors.style.format({"Actual": "{:.2f}", "Model": "{:.2f}"}))
 
-    # Step 7: Portfolio & Expected Return
+    # Step 7 return
     dfp, alloc = portfolio_editor()
     exp_eq = sum(probs[r] / 100 * rets[i] for i, r in enumerate(regimes))
     ret_asset = np.array([exp_eq, gold_price / a_gold - 1, oil_price / a_oil - 1, bond_yield, DEFAULT_CASH_YIELD])
@@ -224,16 +231,14 @@ def run():
     st.subheader("Step 7: Expected Portfolio Return")
     st.metric("Expected Return", f"{exp_return:.2%}")
 
-    # Step 8: Monte Carlo Simulation & Distribution
+    # Step 8 MC
     vols = np.array([0.15, 0.10, 0.12, 0.08, 0.00])
-    # compute probability-weighted avg eq-gold correlation
-    avg_corr = sum((probs[r]/100.0) * corr_vals[r] for r in regimes)
     cov = np.diag(vols) @ np.array([
-        [1,        avg_corr, 0,      0,      0],
-        [avg_corr, 1,        0,      0,      0],
-        [0,        0,        1,      0,      0],
-        [0,        0,        0,      1,      0],
-        [0,        0,        0,      0,      1]
+        [1, avg_corr, 0, 0, 0],
+        [avg_corr, 1, 0, 0, 0],
+        [0, 0, 1, 0, 0],
+        [0, 0, 0, 1, 0],
+        [0, 0, 0, 0, 1]
     ]) @ np.diag(vols)
     sims = simulate(alloc, ret_asset, cov)
     st.subheader("Step 8: Portfolio MC Distribution")
