@@ -137,7 +137,15 @@ def pe_from_real(rate_pct, prem=0.04):
 def nelson_siegel(rt):
     return 1 - ((1 - np.exp(-rt)) / rt) + 0.5 * (((1 - np.exp(-rt)) / rt) - np.exp(-rt))
 
-def price_gold(rt, vix, geo_score):
+def price_gold(rt, vix, geo_score, eq_gold_corr):
+    """
+    *Prices gold by incorporating real rates, VIX safe-haven premium, geopolitical risk, and equity-gold correlation (negative corr boosts safe-haven demand).* 
+    """
+    base = 2000 * (1 - rt * 0.1)
+    vix_term = vix * 10
+    geo_term = geo_score * 300
+    corr_term = -eq_gold_corr * 200  # negative correlation increases gold demand
+    return base + vix_term + geo_term + corr_term
     return 2000 * (1 - rt * 0.1) + vix * 10 + geo_score * 300
 
 def price_oil(inv, opec, pmi, geo_score):
@@ -193,8 +201,9 @@ def run():
     st.write(dfv)
 
     # Step 6: Valuation & Asset Anchors
-    vix_model, inv_change, opec_quota, pmi_model = 16.0, 0.0, 0.0, 50.0
-    gold_price = price_gold(rt, vix_model, sum(geo_events.values()))
+    # compute weighted equity-gold correlation for anchors
+    avg_corr = sum((probs[r]/100.0) * corr_vals[r] for r in regimes)
+    gold_price = price_gold(rt, vix_model, sum(geo_events.values()), avg_corr)
     oil_price = price_oil(inv_change, opec_quota, pmi_model, sum(geo_events.values()))
     bond_yield = nelson_siegel(rt)
     anchors = pd.DataFrame(
@@ -217,13 +226,14 @@ def run():
 
     # Step 8: Monte Carlo Simulation & Distribution
     vols = np.array([0.15, 0.10, 0.12, 0.08, 0.00])
-    avg_corr = np.mean(list(corr_vals.values()))
+    # compute probability-weighted avg eq-gold correlation
+    avg_corr = sum((probs[r]/100.0) * corr_vals[r] for r in regimes)
     cov = np.diag(vols) @ np.array([
-        [1, avg_corr, 0, 0, 0],
-        [avg_corr, 1, 0, 0, 0],
-        [0, 0, 1, 0, 0],
-        [0, 0, 0, 1, 0],
-        [0, 0, 0, 0, 1]
+        [1,        avg_corr, 0,      0,      0],
+        [avg_corr, 1,        0,      0,      0],
+        [0,        0,        1,      0,      0],
+        [0,        0,        0,      1,      0],
+        [0,        0,        0,      0,      1]
     ]) @ np.diag(vols)
     sims = simulate(alloc, ret_asset, cov)
     st.subheader("Step 8: Portfolio MC Distribution")
