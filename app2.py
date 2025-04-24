@@ -109,7 +109,9 @@ def step3_regimes(liq, fiscal, geo):
         # manual sliders
         for r, pct in auto.items():
             probs[r] = st.sidebar.slider(f"P({r})%", 0, 100, int(pct * 100), key=f"prob_{r}")
-        if sum(probs.values()) != 100:
+        total = sum(probs.values())
+        st.sidebar.markdown(f"**Total Probability: {total}%**")
+        if total != 100:
             st.sidebar.error("Probabilities must sum to 100%.")
             st.stop()
     else:
