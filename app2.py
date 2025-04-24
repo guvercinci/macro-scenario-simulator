@@ -35,6 +35,8 @@ def normalize_geo(idx, vix, conflicts):
     return sum(w * c for w, c in zip(GEO_WEIGHTS, comps))
 
 def step1_backdrop():
+    st.sidebar.header("Step 2: Macro Backdrop")
+    st.sidebar.markdown("*Empirical data or manual inputs for liquidity, fiscal, and geopolitical risk.*")
     st.sidebar.header("Step 1: Macro Backdrop")
     st.sidebar.markdown("*Empirical data or manual inputs for liquidity, fiscal, and geopolitical risk.*")
     use_emp = st.sidebar.checkbox("Use empirical inputs", True)
@@ -65,6 +67,8 @@ def step1_backdrop():
 
 # === Step 2: Market Prices & Flashpoints ===
 def step2_market():
+    st.sidebar.header("Step 1: Market Prices & Flashpoints")
+    st.sidebar.markdown("*Enter current prices and geo-event impacts.*")
     st.sidebar.header("Step 2: Market Prices & Flashpoints")
     st.sidebar.markdown("*Enter current prices and geo-event impacts.*")
     eps = st.sidebar.number_input("SPX trailing EPS", 220.0)
@@ -143,8 +147,10 @@ def portfolio_editor():
 
 # === Main Application ===
 def run():
-    # Steps 1-3
-    liq, fiscal, geo, rt, m2 = step1_backdrop()
+    # Step 1: Market Prices & Flashpoints
+    eps, spx, a_gold, a_oil, a_10y, geo_events = step2_market()
+    # Step 2: Macro Backdrop
+    liq, fiscal, geo, rt, m2 = step1_backdrop()()
     eps, spx, a_gold, a_oil, a_10y, geo_events = step2_market()
     regimes, probs = step3_regimes(liq, fiscal, geo)
 
