@@ -141,14 +141,13 @@ def step5_drivers(eps, spx, rt, m2, liq, fiscal, geo, regimes, probs):
         'Stagflation': 2.0,
         'Deflation':  -4.0
     }
-    # Neutralize share change impact for all regimes
-            # Realistic share change: buybacks in expansion, small issuance in recession
-        share_def = {
-            'Expansion':   -0.05,   # 5% EPS boost from buybacks in expansion
-            'Recession':    0.02,   # 2% EPS dilution from issuance in recession
-            'Stagflation':  0.00,   # negligible share change
-            'Deflation':    0.00    # negligible share change
-        }
+        # Realistic share change: buybacks in expansion, small issuance in recession
+    share_def = {
+        'Expansion':   -0.05,   # 5% EPS boost from buybacks
+        'Recession':    0.02,   # 2% dilution from issuance
+        'Stagflation':  0.00,
+        'Deflation':    0.00
+    }
     corr_def = {
         'Expansion':   0.0,
         'Recession':  -0.5,
