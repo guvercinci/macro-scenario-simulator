@@ -9,7 +9,7 @@ st.set_page_config(page_title="Macro Scenario Simulator", layout="wide")
 st.title("Macro Scenario Simulator")
 st.markdown(
     "This interactive tool helps you stress-test a portfolio across different economic regimes. "
-    "Follow the numbered steps in the sidebar to set the macro backdrop, enter market prices, "
+    "Follow the numbered steps in the sidebar to enter market prices, set the macro backdrop, "
     "adjust scenario drivers, and visualize fair-value estimates and risk distributions."
 )
 
@@ -17,82 +17,86 @@ st.markdown(
 MAX_MACRO_PE_IMPACT = 0.6
 DEFAULT_CASH_YIELD = 0.02
 
-# === Step 1: Macro Backdrop ===
+# === Step 1: Market Prices & Flashpoints ===
+
+def step1_market():
+    st.sidebar.header("Step 1: Market Prices & Flashpoints")
+    st.sidebar.markdown("*Enter current asset prices and geopolitical flashpoint impacts.*")
+    eps = st.sidebar.number_input("SPX trailing EPS", value=220.0)
+    spx = st.sidebar.number_input("SPX index level", value=4500.0)
+    st.sidebar.markdown("**Current Asset Prices**")
+    a_gold = st.sidebar.number_input("Gold price ($)", value=1900.0, min_value=0.0)
+    a_oil = st.sidebar.number_input("Oil price ($)", value=75.0, min_value=0.0)
+    a_10y = st.sidebar.number_input("10Y yield (%)", value=3.5, min_value=0.0)
+    st.sidebar.markdown("**Geo Flashpoints**")
+    geo_events = {}
+    for name in ["Tariff shock", "Gas cutoff"]:
+        geo_events[name] = st.sidebar.slider(f"Impact: {name}", -1.0, 1.0, 0.0)
+    return eps, spx, a_gold, a_oil, a_10y, geo_events
+
+# === Step 2: Macro Backdrop ===
 LIQ_WEIGHTS = [0.4, 0.3, 0.3]
 FISCAL_WEIGHTS = [0.33, 0.33, 0.34]
 GEO_WEIGHTS = [0.5, 0.3, 0.2]
 
 def normalize_liquidity(fed_bs, short_rate, m2):
-    comps = [(fed_bs - 15) / 30, np.clip((5 - short_rate) / 5, 0, 1), np.clip(m2 / 15, 0, 1)]
+    comps = [(fed_bs - 15) / 30,
+             np.clip((5 - short_rate) / 5, 0, 1),
+             np.clip(m2 / 15, 0, 1)]
     return sum(w * c for w, c in zip(LIQ_WEIGHTS, comps))
 
 def normalize_fiscal(deficit, spend, transfer):
-    comps = [np.clip((deficit - 1) / 14, 0, 1), np.clip((spend - 15) / 20, 0, 1), np.clip((transfer - 5) / 15, 0, 1)]
+    comps = [np.clip((deficit - 1) / 14, 0, 1),
+             np.clip((spend - 15) / 20, 0, 1),
+             np.clip((transfer - 5) / 15, 0, 1)]
     return sum(w * c for w, c in zip(FISCAL_WEIGHTS, comps))
 
 def normalize_geo(idx, vix, conflicts):
-    comps = [np.clip((idx - 50) / 150, 0, 1), np.clip((vix - 10) / 40, 0, 1), np.clip((conflicts - 10) / 50, 0, 1)]
+    comps = [np.clip((idx - 50) / 150, 0, 1),
+             np.clip((vix - 10) / 40, 0, 1),
+             np.clip((conflicts - 10) / 50, 0, 1)]
     return sum(w * c for w, c in zip(GEO_WEIGHTS, comps))
 
-def step1_backdrop():
+def step2_backdrop():
     st.sidebar.header("Step 2: Macro Backdrop")
-    st.sidebar.markdown("*Empirical data or manual inputs for liquidity, fiscal, and geopolitical risk.*")
-    st.sidebar.header("Step 1: Macro Backdrop")
-    st.sidebar.markdown("*Empirical data or manual inputs for liquidity, fiscal, and geopolitical risk.*")
+    st.sidebar.markdown("*Empirical inputs or manual overrides for liquidity, fiscal, and geo risk.*")
     use_emp = st.sidebar.checkbox("Use empirical inputs", True)
     if use_emp:
         override = st.sidebar.checkbox("Manual override", False)
         disabled = not override
-        fed_bs = st.sidebar.number_input("Fed BS (% of GDP)", 38.0, disabled=disabled)
-        real_rate = st.sidebar.number_input("Real short rate (%)", 2.5, disabled=disabled)
-        m2 = st.sidebar.number_input("M2 growth YoY (%)", 6.0, disabled=disabled)
-        deficit = st.sidebar.number_input("Budget deficit (% of GDP)", 5.0, disabled=disabled)
-        spend = st.sidebar.number_input("Govt spending (% of GDP)", 24.0, disabled=disabled)
-        transfer = st.sidebar.number_input("Net transfers (% of GDP)", 12.0, disabled=disabled)
-        geo_idx = st.sidebar.number_input("Geo risk index", 100.0, disabled=disabled)
-        vix = st.sidebar.number_input("VIX index", 16.0, disabled=disabled)
-        conflicts = st.sidebar.number_input("Conflict events (#)", 20, disabled=disabled)
-        liq = normalize_liquidity(fed_bs, real_rate, m2)
+        fed_bs = st.sidebar.number_input("Fed BS (% of GDP)", value=38.0, disabled=disabled)
+        short_rate = st.sidebar.number_input("Real short rate (%)", value=2.5, disabled=disabled)
+        m2 = st.sidebar.number_input("M2 growth YoY (%)", value=6.0, disabled=disabled)
+        deficit = st.sidebar.number_input("Budget deficit (% of GDP)", value=5.0, disabled=disabled)
+        spend = st.sidebar.number_input("Govt spending (% of GDP)", value=24.0, disabled=disabled)
+        transfer = st.sidebar.number_input("Net transfers (% of GDP)", value=12.0, disabled=disabled)
+        geo_idx = st.sidebar.number_input("Geo risk index", value=100.0, disabled=disabled)
+        vix = st.sidebar.number_input("VIX index", value=16.0, disabled=disabled)
+        conflicts = st.sidebar.number_input("Conflict events (#)", value=20, disabled=disabled)
+        liq = normalize_liquidity(fed_bs, short_rate, m2)
         fiscal = normalize_fiscal(deficit, spend, transfer)
         geo = normalize_geo(geo_idx, vix, conflicts)
         liq = st.sidebar.slider("Liquidity score", 0.0, 1.0, liq, disabled=not override)
         fiscal = st.sidebar.slider("Fiscal score", 0.0, 1.0, fiscal, disabled=not override)
         geo = st.sidebar.slider("Geo risk score", 0.0, 1.0, geo, disabled=not override)
     else:
-        real_rate, m2 = 2.5, 6.0
+        short_rate, m2 = 2.5, 6.0
         liq = st.sidebar.slider("Liquidity score", 0.0, 1.0, 0.5)
         fiscal = st.sidebar.slider("Fiscal score", 0.0, 1.0, 0.3)
         geo = st.sidebar.slider("Geo risk score", 0.0, 1.0, 0.1)
-    return liq, fiscal, geo, real_rate, m2
-
-# === Step 2: Market Prices & Flashpoints ===
-def step2_market():
-    st.sidebar.header("Step 1: Market Prices & Flashpoints")
-    st.sidebar.markdown("*Enter current prices and geo-event impacts.*")
-    st.sidebar.header("Step 2: Market Prices & Flashpoints")
-    st.sidebar.markdown("*Enter current prices and geo-event impacts.*")
-    eps = st.sidebar.number_input("SPX trailing EPS", 220.0)
-    spx = st.sidebar.number_input("SPX index level", 4500.0)
-    st.sidebar.markdown("**Current Asset Prices**")
-    a_gold = st.sidebar.number_input("Gold price ($)", 1900.0)
-    a_oil = st.sidebar.number_input("Oil price ($)", 75.0)
-    a_10y = st.sidebar.number_input("10Y yield (%)", 3.5)
-    st.sidebar.markdown("**Geo flashpoints**")
-    geo_events = {}
-    for name in ["Tariff shock", "Gas cutoff"]:
-        geo_events[name] = st.sidebar.slider(name, -1.0, 1.0, 0.0)
-    return eps, spx, a_gold, a_oil, a_10y, geo_events
+    return liq, fiscal, geo, short_rate, m2
 
 # === Step 3: Regime Probabilities ===
 def step3_regimes(liq, fiscal, geo):
     st.sidebar.header("Step 3: Regime Probabilities")
-    st.sidebar.markdown("*Auto-computed based on backdrop, then optional override.*")
+    st.sidebar.markdown("*Auto-computed from backdrop, then optional override.*")
     exp_p = max(liq * 0.6 + fiscal * 0.4 - geo * 0.2, 0)
     rec_p = max((1 - liq) * 0.7 + geo * 0.3, 0)
     stag_p = max(fiscal * 0.2 + geo * 0.5 + liq * 0.1, 0)
     defl_p = max((1 - fiscal) * 0.5 + (1 - geo) * 0.5 - liq * 0.2, 0)
     total = exp_p + rec_p + stag_p + defl_p
-    auto = {'Expansion': exp_p / total, 'Recession': rec_p / total, 'Stagflation': stag_p / total, 'Deflation': defl_p / total}
+    auto = {'Expansion': exp_p / total, 'Recession': rec_p / total,
+            'Stagflation': stag_p / total, 'Deflation': defl_p / total}
     override = st.sidebar.checkbox("Override manually", False)
     probs = {}
     for r, pct in auto.items():
@@ -147,14 +151,11 @@ def portfolio_editor():
 
 # === Main Application ===
 def run():
-    # Step 1: Market Prices & Flashpoints
-    eps, spx, a_gold, a_oil, a_10y, geo_events = step2_market()
-    # Step 2: Macro Backdrop
-    liq, fiscal, geo, rt, m2 = step1_backdrop()()
-    eps, spx, a_gold, a_oil, a_10y, geo_events = step2_market()
+    eps, spx, a_gold, a_oil, a_10y, geo_events = step1_market()
+    liq, fiscal, geo, rt, m2 = step2_backdrop()
     regimes, probs = step3_regimes(liq, fiscal, geo)
 
-    # Step 5: Scenario drivers & correlations
+    # Step 5: Scenario Drivers & Correlations
     st.sidebar.header("Step 5: Scenario Drivers & Correlations")
     gdp_def = {'Expansion': 3.0, 'Recession': -1.0, 'Stagflation': 1.0, 'Deflation': -0.5}
     rate_def = {'Expansion': 0.2, 'Recession': 1.0, 'Stagflation': 0.8, 'Deflation': -0.2}
@@ -173,11 +174,11 @@ def run():
         rets.append(fair_reg / spx - 1)
         eps_list.append(eps_f)
         pe_list.append(pe_f)
-    # Weighted EPS/P/E and fair SPX
+
     weighted_eps = sum(probs[r] / 100 * eps_list[i] for i, r in enumerate(regimes))
     weighted_pe = sum(probs[r] / 100 * pe_list[i] for i, r in enumerate(regimes))
     fair_spx = weighted_eps * weighted_pe
-    # Display scenario table
+
     dfv = pd.DataFrame({'Regime': regimes, 'Fair SPX': values, 'Return%': rets, 'P%': [probs[r] for r in regimes]})
     st.write(dfv)
 
@@ -193,10 +194,8 @@ def run():
     bond_yield = nelson_siegel(rt)
     anchors = pd.DataFrame(
         index=["SPX","Weighted EPS","Weighted P/E","Gold","Oil","10Y Yield"],
-        data={
-            "Actual": [spx, eps, spx/eps, a_gold, a_oil, a_10y/100],
-            "Model": [fair_spx, weighted_eps, weighted_pe, gold_price, oil_price, bond_yield]
-        }
+        data={"Actual": [spx, eps, spx/eps, a_gold, a_oil, a_10y/100],
+              "Model": [fair_spx, weighted_eps, weighted_pe, gold_price, oil_price, bond_yield]}
     )
     st.table(anchors.style.format({"Actual": "{:.2f}", "Model": "{:.2f}"}))
 
