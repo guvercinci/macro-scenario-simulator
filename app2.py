@@ -196,19 +196,38 @@ def run():
     weighted_pe = sum(probs[r] / 100 * pe_list[i] for i, r in enumerate(regimes))
     fair_spx = weighted_eps * weighted_pe
     dfv = pd.DataFrame({'Regime': regimes, 'Fair SPX': values, 'Return%': rets, 'P%': [probs[r] for r in regimes]})
-    st.write(dfv)
+    # Format dfv: Fair SPX as $ no decimals, Return% and P% as percentages with one decimal
+    fmt_dfv = dfv.copy()
+    fmt_dfv['Fair SPX'] = fmt_dfv['Fair SPX'].apply(lambda x: f'${x:,.0f}')
+    fmt_dfv['Return%'] = fmt_dfv['Return%'].apply(lambda x: f'{x:.1%}')
+    fmt_dfv['P%'] = fmt_dfv['P%'].apply(lambda x: f'{x:.1f}%')
+    st.subheader("Regime Fair-Value Table")
+    st.table(fmt_dfv)
     vix_model, inv_change, opec_quota, pmi_model = step6_anchors_inputs()
     avg_corr = sum((probs[r] / 100) * corr_vals[r] for r in regimes)
     gold_price = price_gold(rt, vix_model, sum(geo_events.values()), avg_corr)
     oil_price = price_oil(inv_change, opec_quota, pmi_model, sum(geo_events.values()))
     bond_yield = nelson_siegel(rt)
     anchors = pd.DataFrame(
-        index=["SPX", "Weighted EPS", "Weighted P/E", "Gold", "Oil", "10Y Yield"],
-        data={
-            "Actual": [spx, eps, spx / eps, a_gold, a_oil, a_10y / 100],
-            "Model": [fair_spx, weighted_eps, weighted_pe, gold_price, oil_price, bond_yield]
-        }
-    )
+    index=["SPX", "Weighted EPS", "Weighted P/E", "Gold", "Oil", "10Y Yield"],
+    data={
+        "Actual": [spx, eps, spx/eps, a_gold, a_oil, a_10y/100],
+        "Model": [fair_spx, weighted_eps, weighted_pe, gold_price, oil_price, bond_yield]
+    }
+)
+# Format currency and percentage displays
+fmt_anchors = anchors.copy()
+for metric in fmt_anchors.index:
+    for col in fmt_anchors.columns:
+        val = anchors.loc[metric, col]
+        if metric in ["SPX", "Weighted EPS", "Gold", "Oil"]:
+            fmt_anchors.loc[metric, col] = f"${{val:,.0f}}"
+        elif metric == "Weighted P/E":
+            fmt_anchors.loc[metric, col] = f"{{val:.1f}}"
+        elif metric == "10Y Yield":
+            fmt_anchors.loc[metric, col] = f"{{val:.1%}}"
+st.subheader("Valuation & Asset Price Anchors")
+st.table(fmt_anchors)
     st.subheader("Valuation & Asset Price Anchors")
     st.table(anchors.style.format({"Actual": "{:.2f}", "Model": "{:.2f}"}))
     dfp, alloc = portfolio_editor()
