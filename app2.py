@@ -172,9 +172,14 @@ def price_oil(inv, opec, pmi, geo_score):
     base     = 80*(1 + p_term - inv/100)
     return base + opec*80 + geo_term
 
-def nelson_siegel(rt_pct):
-    rt = rt_pct/100
-    return 1 - ((1 - np.exp(-rt))/rt) + 0.5*(((1 - np.exp(-rt))/rt) - np.exp(-rt))
+def nelson_siegel_yield(short_rate_pct, tau=10, beta0=0.02, beta1=0.03, beta2=0.01, lam=0.6):
+    # level component = short rate
+    level = short_rate_pct/100
+    # slope loading at tau=10
+    slope = beta1 * (1 - np.exp(-lam*tau)) / (lam*tau)
+    # curvature loading at tau=10
+    curve = beta2 * ((1 - np.exp(-lam*tau)) / (lam*tau) - np.exp(-lam*tau))
+    return level + slope + curve
 
 # === Main Application ===
 def run():
@@ -196,7 +201,7 @@ def run():
     avg_corr = np.mean(list(corrs.values()))
     gold_m = price_gold(rt, vix, avg_geo, avg_corr)
     oil_m  = price_oil(inv, opec, pmi, avg_geo)
-    bond_y = nelson_siegel(rt)
+    bond_y = nelson_siegel_yield(rt)
     anchors = pd.DataFrame(
         index=["SPX","Weighted EPS","Weighted P/E","Gold","Oil","10Y Yield"],
         data={
