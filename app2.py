@@ -221,12 +221,14 @@ for metric in fmt_anchors.index:
     for col in fmt_anchors.columns:
         val = anchors.loc[metric, col]
         if metric in ["SPX", "Weighted EPS", "Gold", "Oil"]:
-            fmt_anchors.loc[metric, col] = f"${{val:,.0f}}"
+            fmt_anchors.loc[metric, col] = f"${val:,.0f}"
         elif metric == "Weighted P/E":
-            fmt_anchors.loc[metric, col] = f"{{val:.1f}}"
+            fmt_anchors.loc[metric, col] = f"{val:.1f}"
         elif metric == "10Y Yield":
-            fmt_anchors.loc[metric, col] = f"{{val:.1%}}"
+            fmt_anchors.loc[metric, col] = f"{val:.1%}"
+
 st.subheader("Valuation & Asset Price Anchors")
+st.table(fmt_anchors)
 st.table(fmt_anchors)
     st.subheader("Valuation & Asset Price Anchors")
     st.table(anchors.style.format({"Actual": "{:.2f}", "Model": "{:.2f}"}))
