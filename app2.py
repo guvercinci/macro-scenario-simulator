@@ -218,7 +218,15 @@ def run():
     avg_corr           = np.mean(list(corrs.values()))
     gold_price         = price_gold(rt, vix, avg_geo, avg_corr)
     oil_price          = price_oil(inv, opec, pmi, avg_geo)
-    bond_yield         = nelson_siegel_yield(rt)
+    bond_yield = nelson_siegel_yield(rt)
+    # --- Macro Summary ---
+    st.subheader("Macro Summary")
+    st.markdown(
+        f"In the current environment, Liquidity Score = {liq:.2f}, Fiscal Score = {fiscal:.2f}, Geo-Risk Score = {geo:.2f}, "
+        f"Real Rate = {rt:.2f}%, M2 Growth = {m2:.2f}%. "
+        f"Based on these inputs, the model's base-case fair-value estimates are: SPX ≈ ${fair_spx:,.0f}, "
+        f"Gold ≈ ${gold_price:,.0f}, and Oil ≈ ${oil_price:,.0f}."
+    )
 
     # Valuation & Asset Price Anchors
     anchors = pd.DataFrame(
