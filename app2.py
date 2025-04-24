@@ -1,7 +1,11 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import openai
+try:
+    import openai
+    has_openai = True
+except ImportError:
+    has_openai = False
 
 # === Page Config & Title ===
 st.set_page_config(page_title="Macro Scenario Simulator", layout="wide")
@@ -15,7 +19,28 @@ st.markdown(
 # === OpenAI Setup ===
 openai.api_key = st.secrets.get("OPENAI_API_KEY", "")
 
-def generate_macro_analysis(inputs: dict) -> str:
+if has_openai:
+    def generate_macro_analysis(inputs: dict) -> str:
+        prompt = (
+            "Given these macro inputs, write a concise CNBC-style summary of the current environment and likely outlook.
+"
+            f"Inputs: {inputs}
+"
+            "Focus on liquidity, fiscal stance, geo-risk, rates, and regime probabilities."
+        )
+        try:
+            resp = openai.ChatCompletion.create(
+                model="gpt-4o-mini",
+                messages=[{"role":"user","content":prompt}],
+                max_tokens=150,
+                temperature=0.7,
+            )
+            return resp.choices[0].message.content.strip()
+        except Exception as e:
+            return f"Error generating analysis: {e}"
+else:
+    def generate_macro_analysis(inputs: dict) -> str:
+        return "GPT analysis unavailable: 'openai' package not installed."(inputs: dict) -> str:
     prompt = (
         "Given these macro inputs, write a concise CNBC-style summary of the current environment and likely outlook.\n"
         f"Inputs: {inputs}\n"
@@ -207,7 +232,14 @@ def run():
     fair_spx = w_eps * w_pe
 
     # 3. GPT-based macro analysis
-    if st.button("Analyze macro situation"):
+    if has_openai and st.button("Analyze macro situation"):
+        summary_inputs = {'liq': round(liq,2), 'fiscal': round(fiscal,2), 'geo': round(geo,2),
+                          'real_rate': rt, 'm2': m2, 'probs': probs, 'geo_ev': geo_ev}
+        analysis = generate_macro_analysis(summary_inputs)
+        st.subheader("AI-Driven Macro Analysis")
+        st.write(analysis)
+    elif not has_openai:
+        st.warning("GPT analysis disabled: install 'openai' package to enable AI commentary.")
         summary_inputs = {'liq': round(liq,2), 'fiscal': round(fiscal,2), 'geo': round(geo,2),
                           'real_rate': rt, 'm2': m2, 'probs': probs, 'geo_ev': geo_ev}
         analysis = generate_macro_analysis(summary_inputs)
