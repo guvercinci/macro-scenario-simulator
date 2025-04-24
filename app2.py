@@ -19,12 +19,13 @@ DEFAULT_CASH_YIELD = 0.043     # assumed annual cash yield (4.3%)
 def step1_market():
     st.sidebar.header("Market Prices & Flashpoints")
     st.sidebar.markdown("*Enter asset prices and geo-event impacts.*")
-    eps   = st.sidebar.number_input("SPX trailing EPS",     min_value=0.0, value=220.0)
-    spx   = st.sidebar.number_input("SPX index level",     min_value=0.0, value=5280.0)
+    # Updated default inputs as of April 24, 2025
+    eps   = st.sidebar.number_input("SPX trailing EPS", min_value=0.0, value=220.0)
+    spx   = st.sidebar.number_input("SPX index level", min_value=0.0, value=5280.0)
     st.sidebar.markdown("**Current Asset Prices**")
-    a_gold= st.sidebar.number_input("Gold price ($)",      min_value=0.0, value=3300.0)
-    a_oil = st.sidebar.number_input("Oil price ($)",       min_value=0.0, value=65.0)
-    a_10y = st.sidebar.number_input("10Y yield (%)",      min_value=0.0, value=4.3)
+    a_gold= st.sidebar.number_input("Gold price ($)", min_value=0.0, value=3300.0)
+    a_oil = st.sidebar.number_input("Oil price ($)", min_value=0.0, value=65.0)
+    a_10y = st.sidebar.number_input("10Y yield (%)", min_value=0.0, value=4.3)
     st.sidebar.markdown("**Geo Flashpoints**")
     geo_events = {
         "Tariff shock": st.sidebar.slider("Impact: Tariff shock", -1.0, 1.0, -0.8),
