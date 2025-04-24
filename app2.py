@@ -109,38 +109,31 @@ def step3_regimes(liq, fiscal, geo):
         st.stop()
     return list(auto.keys()), probs
 
-# === Helper Functions ===
-def pe_from_real(rate_pct, prem=0.04):
-    real_rate = rate_pct / 100.0
-    req = real_rate + prem
-    pe = (1 / req) if req > 0 else float('inf')
-    return min(40, max(8, pe))
-
-def nelson_siegel(rt):
-    return 1 - ((1 - np.exp(-rt)) / rt) + 0.5 * (((1 - np.exp(-rt)) / rt) - np.exp(-rt))
-
-def price_gold(rt, vix, geo_score):
-    return 2000 * (1 - rt * 0.1) + vix * 10 + geo_score * 300
-
-def price_oil(inv, opec, pmi, geo_score):
-    return 80 * (1 + pmi / 100 - inv / 100) + opec * 80 + geo_score * 50
-
-def eps_proj(eps, gdp, inf, ratec, sharec):
-    rev = eps * (1 + gdp / 100)
-    marg = rev * (1 - inf * 0.005 - ratec * 0.01)
-    debt = ratec * 0.1
-    floor = eps * 0.125
-    return max(marg - debt, floor) * (1 - sharec)
-
-def macro_mult(liq, fiscal, geo):
-    impact = liq * 0.25 + fiscal * 0.2 - geo * 0.3
-    return 1 + min(MAX_MACRO_PE_IMPACT, impact)
-
-def simulate(alloc, ret, cov, sims=3000):
-    draws = np.random.multivariate_normal(ret, cov, sims)
-    return (draws * alloc).sum(axis=1)
-
+# === Step 4: Portfolio Allocation ===
 def portfolio_editor():
+    st.subheader("Step 4: Portfolio Allocation")
+    df_init = pd.DataFrame({'Asset': ['Equities', 'Gold', 'Oil', 'Bonds', 'Cash'], 'Pct': [40, 20, 20, 15, 5]})
+    df = st.data_editor(df_init, use_container_width=True) if hasattr(st, 'data_editor') else st.experimental_data_editor(df_init, use_container_width=True)
+    if abs(df['Pct'].sum() - 100) > 0.1:
+        st.error("Portfolio weights must sum to 100%.")
+        st.stop()
+    return df, df['Pct'].values / 100
+
+# === Step 5: Scenario Drivers & Correlations ===
+# ... existing code ...
+
+# === Step 6: Anchor Drivers & Assumptions ===
+def step6_anchors_inputs():
+    st.sidebar.header("Step 6: Anchor Drivers & Assumptions")
+    st.sidebar.markdown("*Set inputs used in the Valuation & Asset Price Anchors section.*")
+    vix_model = st.sidebar.number_input("VIX for Gold", value=16.0)
+    inv_change = st.sidebar.number_input("Oil inv change (%)", value=0.0)
+    opec_quota = st.sidebar.slider("OPEC quota", -1.0, 1.0, 0.0)
+    pmi_model = st.sidebar.number_input("Global PMI", value=50.0)
+    return vix_model, inv_change, opec_quota, pmi_model
+
+# === Main Application ===
+():
     st.subheader("Step 4: Portfolio Allocation")
     df_init = pd.DataFrame({'Asset': ['Equities', 'Gold', 'Oil', 'Bonds', 'Cash'], 'Pct': [40, 20, 20, 15, 5]})
     df = st.data_editor(df_init, use_container_width=True) if hasattr(st, 'data_editor') else st.experimental_data_editor(df_init, use_container_width=True)
