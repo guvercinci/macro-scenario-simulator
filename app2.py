@@ -12,8 +12,8 @@ st.markdown(
 )
 
 # === Constants ===
-MAX_MACRO_PE_IMPACT = 0.6
-DEFAULT_CASH_YIELD = 0.02
+MAX_MACRO_PE_IMPACT = 0.6  # max adjustment to P/E from macro factors
+DEFAULT_CASH_YIELD = 0.02  # assumed cash yield
 
 # === Step 1: Market Prices & Flashpoints ===
 def step1_market():
@@ -110,8 +110,7 @@ def step3_regimes(liq, fiscal, geo):
     if not override:
         vals = [int(auto[r]*100) for r in auto]
         diff = 100 - sum(vals)
-        idx = vals.index(max(vals))
-        vals[idx] += diff
+        vals[vals.index(max(vals))] += diff
         probs = dict(zip(auto.keys(), vals))
     return list(auto.keys()), probs
 
@@ -135,50 +134,50 @@ def step5_drivers(eps, spx, rt, m2, liq, fiscal, geo, regimes, probs):
     gdp_def = {'Expansion':3.0,'Recession':-1.0,'Stagflation':1.0,'Deflation':-0.5}
     rate_def = {'Expansion':0.2,'Recession':1.0,'Stagflation':0.8,'Deflation':-0.2}
     share_def= {'Expansion':0.0,'Recession':0.02,'Stagflation':0.0,'Deflation':0.0}
-    values, rets, eps_list, pe_list, corrs = [],[],[],[],{}
+    vals, rets, eps_list, pe_list, corrs = [],[],[],[],{}
     for r in regimes:
         with st.sidebar.expander(r, True):
             g = st.number_input(f"GDP {r}%", gdp_def[r], key=f"gdp_{r}")
             rc=st.number_input(f"Rate shock {r}%", rate_def[r], key=f"rs_{r}")
             sc=st.number_input(f"Share change {r}%", share_def[r], key=f"sc_{r}")
-            corrs[r]=st.slider(f"Eq-Gold corr {r}",-1.0,1.0,-0.2,key=f"corr_{r}")
+            corrs[r]=st.sidebar.slider(f"Eq-Gold corr {r}", -1.0,1.0,-0.2, key=f"corr_{r}")
         eps_proj = eps*(1+g/100)*(1 - m2*0.005 - rc*0.01) - rc*0.1
         eps_floor = eps*0.125
         eps_f = max(eps_proj, eps_floor)*(1-sc)
         pe_base = 1/((rt/100)+0.04)
-        pe_f = min(40, max(8, pe_base)) * (1 + min(MAX_MACRO_PE_IMPACT, liq*0.25+fiscal*0.2-geo*0.3))
-        fair_v = eps_f * pe_f
-        values.append(fair_v)
-        rets.append(fair_v/spx - 1)
+        pe_f = min(40, max(8, pe_base))*(1 + min(MAX_MACRO_PE_IMPACT, liq*0.25+fiscal*0.2-geo*0.3))
+        fv = eps_f * pe_f
+        vals.append(fv)
+        rets.append(fv/spx-1)
         eps_list.append(eps_f)
         pe_list.append(pe_f)
-    return values, rets, eps_list, pe_list, corrs
+    return vals, rets, eps_list, pe_list, corrs
 
-# === Step 6: Anchor Drivers & Assumptions ===\def step6_anchors_inputs():
+# === Step 6: Anchor Drivers & Assumptions ===
+def step6_anchors_inputs():
     st.sidebar.header("Anchor Drivers & Assumptions")
     st.sidebar.markdown("*Inputs for valuation & asset price anchors.*")
     vix = st.sidebar.number_input("VIX for Gold", value=16.0)
     inv = st.sidebar.number_input("Oil inventory change (%)", value=0.0)
-    opec = st.sidebar.slider("OPEC quota adjustment", -1.0, 1.0, 0.0)
-    pmi  = st.sidebar.number_input("Global PMI", value=50.0)
-    return vix, inv, opec, pmi
+    opec = st.sidebar.slider("OPEC quota adjustment", -1.0,1.0,0.0)
+    pmi = st.sidebar.number_input("Global PMI", value=50.0)
+    return viz, inv, opec, pmi
 
 # === Price Functions ===
-def price_gold(rt_pct, vix, geo_score, eq_corr):
-    return 2000*(1-rt_pct*0.1) + vix*10 + geo_score*300 - eq_corr*200
+def price_gold(rt_pct, viz, geo_score, eq_corr):
+    return 2000*(1-rt_pct*0.1) + viz*10 + geo_score*300 - eq_corr*200
 
 def price_oil(inv, opec, pmi, geo_score):
-    p_term   = (pmi - 50)/100
-    geo_term = (geo_score - 0.3)*100
-    base     = 80*(1 + p_term - inv/100)
+    p_term = (pmi-50)/100
+    geo_term = (geo_score-0.3)*100
+    base = 80*(1 + p_term - inv/100)
     return base + opec*80 + geo_term
 
 # === Step 7: 10-Year Yield via Nelson–Siegel ===
 def nelson_siegel_yield(short_rate_pct, tau=10, beta0=0.02, beta1=0.03, beta2=0.01, lam=0.6):
-    # Use short_rate_pct as level component
     level = short_rate_pct/100
-    slope = beta1 * (1 - np.exp(-lam*tau)) / (lam*tau)
-    curve = beta2 * ((1 - np.exp(-lam*tau)) / (lam*tau) - np.exp(-lam*tau))
+    slope = beta1*(1-np.exp(-lam*tau))/(lam*tau)
+    curve = beta2*((1-np.exp(-lam*tau))/(lam*tau)-np.exp(-lam*tau))
     return level + slope + curve
 
 # === Main Application ===
@@ -188,48 +187,39 @@ def run():
     regimes, probs = step3_regimes(liq, fiscal, geo)
     vals, rets, eps_ls, pe_ls, corrs = step5_drivers(eps, spx, rt, m2, liq, fiscal, geo, regimes, probs)
     w_eps = sum(probs[r]/100 * eps_ls[i] for i,r in enumerate(regimes))
-    w_pe  = sum(probs[r]/100 * pe_ls[i] for i,r in enumerate(regimes))
+    w_pe = sum(probs[r]/100 * pe_ls[i] for i,r in enumerate(regimes))
     fair_spx = w_eps * w_pe
-    # Regime Fair-Value Table
-    dfv = pd.DataFrame({
-        'Regime': regimes,
-        'Fair SPX': vals,
-        'Return%': rets,
-        'P%': [probs[r] for r in regimes]
-    })
-    dfv['Fair SPX'] = dfv['Fair SPX'].apply(lambda x: f"${x:,.0f}")
-    dfv['Return%']  = dfv['Return%'].apply(lambda x: f"{x:.1%}")
-    dfv['P%']       = dfv['P%'].apply(lambda x: f"{x:.1f}%")
+    dfv = pd.DataFrame({'Regime':regimes,'Fair SPX':vals,'Return%':rets,'P%':[probs[r] for r in regimes]})
+    dfv['Fair SPX']=dfv['Fair SPX'].apply(lambda x:f"${x:,.0f}")
+    dfv['Return%']=dfv['Return%'].apply(lambda x:f"{x:.1%}")
+    dfv['P%']=dfv['P%'].apply(lambda x:f"{x:.1f}%")
     st.subheader("Regime Fair-Value Table")
     st.table(dfv)
-    # Anchors
-    vix, inv, opec, pmi = step6_anchors_inputs()
+    viz, inv, opec, pmi = step6_anchors_inputs()
     avg_geo = np.mean(list(geo_ev.values()))
     avg_corr = np.mean(list(corrs.values()))
-    gold_m = price_gold(rt, vix, avg_geo, avg_corr)
+    gold_m = price_gold(rt, viz, avg_geo, avg_corr)
     oil_m  = price_oil(inv, opec, pmi, avg_geo)
-    # 10-Year yield modeled via Nelson–Siegel
     bond_y = nelson_siegel_yield(rt)
     anchors = pd.DataFrame(
         index=["SPX","Weighted EPS","Weighted P/E","Gold","Oil","10Y Yield"],
         data={
-            "Actual": [spx, eps, spx/eps, a_gold, a_oil, a_10y/100],
-            "Model":  [fair_spx, w_eps, w_pe, gold_m, oil_m, bond_y]
+            "Actual":[spx, eps, spx/eps, a_gold, a_oil, a_10y/100],
+            "Model": [fair_spx, w_eps, w_pe, gold_m, oil_m, bond_y]
         }
     )
     fmt = anchors.copy()
     for m in fmt.index:
         for c in fmt.columns:
-            v = anchors.loc[m,c]
+            v = anchors.loc[m, c]
             if m in ["SPX","Weighted EPS","Gold","Oil"]:
-                fmt.loc[m,c] = f"${v:,.0f}"
+                fmt.loc[m, c] = f"${v:,.0f}"
             elif m == "Weighted P/E":
-                fmt.loc[m,c] = f"{v:.1f}"
+                fmt.loc[m, c] = f"{v:.1f}"
             else:
-                fmt.loc[m,c] = f"{v:.1%}"
+                fmt.loc[m, c] = f"{v:.1%}"
     st.subheader("Valuation & Asset Price Anchors")
     st.table(fmt)
-    # Portfolio & Simulation
     dfp, alloc, beta = portfolio_editor()
     exp_eq = sum(probs[r]/100 * rets[i] for i,r in enumerate(regimes)) * beta
     ret_asset = np.array([exp_eq, gold_m/a_gold-1, oil_m/a_oil-1, bond_y, DEFAULT_CASH_YIELD])
