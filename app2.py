@@ -130,19 +130,21 @@ def portfolio_editor():
 # === Step 5: Scenario Drivers & Correlations ===
 def step5_drivers(eps, spx, rt, m2, liq, fiscal, geo, regimes, probs):
     """
-    *Collects scenario-specific GDP, rate, share-change inputs along with regime probabilities and calculates fair SPX values, returns, EPS, P/E lists, and correlation values.*
+    *Collects scenario-specific GDP, rate, share-change inputs, builds correlation sliders, and computes fair SPX values and returns per regime.*
     """
     st.sidebar.header("Step 5: Scenario Drivers & Correlations")
+    # Default scenario inputs
     gdp_def = {'Expansion': 3.0, 'Recession': -1.0, 'Stagflation': 1.0, 'Deflation': -0.5}
     rate_def = {'Expansion': 0.2, 'Recession': 1.0, 'Stagflation': 0.8, 'Deflation': -0.2}
     share_def = {'Expansion': 0.0, 'Recession': 0.02, 'Stagflation': 0.0, 'Deflation': 0.0}
     values, rets, eps_list, pe_list, corr_vals = [], [], [], [], {}
-        for reg in regimes:
+    for reg in regimes:
         with st.sidebar.expander(reg, True):
             gdp = st.number_input(f"GDP {reg}%", gdp_def[reg], key=f"gdp_{reg}")
             ratec = st.number_input(f"Rate shock {reg}%", rate_def[reg], key=f"rs_{reg}")
             sharec = st.number_input(f"Share chg {reg}%", share_def[reg], key=f"sc_{reg}")
             corr_vals[reg] = st.sidebar.slider(f"Eq-Gold corr {reg}", -1.0, 1.0, -0.2, key=f"corr_{reg}")
+        # Calculate regime EPS, P/E, fair SPX, and returns
         eps_f = eps_proj(eps, gdp, m2, ratec, sharec)
         pe_f = pe_from_real(rt) * macro_mult(liq, fiscal, geo)
         fair_reg = eps_f * pe_f
@@ -152,7 +154,7 @@ def step5_drivers(eps, spx, rt, m2, liq, fiscal, geo, regimes, probs):
         pe_list.append(pe_f)
     return values, rets, eps_list, pe_list, corr_vals
 
-# === Step 6: Anchor Drivers & Assumptions ===
+# === Step 6: Anchor Drivers & Assumptions === & Assumptions ===
 def step6_anchors_inputs():
     st.sidebar.header("Step 6: Anchor Drivers & Assumptions")
     st.sidebar.markdown("*Set inputs used in the Valuation & Asset Price Anchors section.*")
