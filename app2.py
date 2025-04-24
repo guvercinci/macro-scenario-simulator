@@ -178,10 +178,8 @@ def pe_from_real(rate_pct, prem=0.04):
     pe = 1 / req if req > 0 else float('inf')
     return min(40, max(8, pe))
 
-def nelson_siegel(r):
-    # r is now a decimal (e.g. 0.025 for 2.5%)
-    return (1 - ((1 - np.exp(-r)) / r)
-            + 0.5 * (((1 - np.exp(-r)) / r) - np.exp(-r)))
+def nelson_siegel(rt):
+    return 1 - ((1 - np.exp(-rt)) / rt) + 0.5 * (((1 - np.exp(-rt)) / rt) - np.exp(-rt))
 
 def price_gold(rt, vix, geo_score, eq_gold_corr):
     base = 2000 * (1 - rt * 0.1)
@@ -191,11 +189,13 @@ def price_gold(rt, vix, geo_score, eq_gold_corr):
     return base + vix_term + geo_term + corr_term
 
 def price_oil(inv, opec, pmi, geo_score):
-    # Center PMI at 50 → neutral; scale per full-swing
+    # Center PMI at 50 → neutral; scale per full‐swing (100 pt)
     pmi_term = (pmi - 50) / 100
-    # Center geo_score at 0.3; scale full 1.0 swing → $100
+
+    # Center geo_score at neutral 0.3; scale full 1.0 swing → $100
     neutral_geo = 0.3
     geo_term = (geo_score - neutral_geo) * 100
+
     base = 80 * (1 + pmi_term - inv / 100)
     return base + opec * 80 + geo_term
 
@@ -217,38 +217,80 @@ def simulate(alloc, ret, cov, sims=3000):
 def run():
     eps, spx, a_gold, a_oil, a_10y, geo_events = step1_market()
     liq, fiscal, geo, rt, m2 = step2_backdrop()
-    regimes, probs      = step3_regimes(liq, fiscal, geo)
+    regimes, probs = step3_regimes(liq, fiscal, geo)
     values, rets, eps_list, pe_list, corr_vals = step5_drivers(
         eps, spx, rt, m2, liq, fiscal, geo, regimes, probs
     )
+
     weighted_eps = sum(probs[r] / 100 * eps_list[i] for i, r in enumerate(regimes))
     weighted_pe  = sum(probs[r] / 100 * pe_list[i] for i, r in enumerate(regimes))
     fair_spx     = weighted_eps * weighted_pe
-    dfv = pd.DataFrame({'Regime': regimes, 'Fair SPX': values, 'Return%': rets, 'P%': [probs[r] for r in regimes]})
+
+    dfv = pd.DataFrame({
+        'Regime': regimes,
+        'Fair SPX': values,
+        'Return%': rets,
+        'P%': [probs[r] for r in regimes]
+    })
     fmt_dfv = dfv.copy()
     fmt_dfv['Fair SPX'] = fmt_dfv['Fair SPX'].apply(lambda x: f'${x:,.0f}')
     fmt_dfv['Return%'] = fmt_dfv['Return%'].apply(lambda x: f'{x:.1%}')
     fmt_dfv['P%']      = fmt_dfv['P%'].apply(lambda x: f'{x:.1f}%')
     st.subheader("Regime Fair-Value Table")
     st.table(fmt_dfv)
+
     vix_model, inv_change, opec_quota, pmi_model = step6_anchors_inputs()
     avg_corr = sum((probs[r] / 100) * corr_vals[r] for r in regimes)
+
     gold_price = price_gold(rt, vix_model, sum(geo_events.values()), avg_corr)
     oil_price  = price_oil(inv_change, opec_quota, pmi_model, sum(geo_events.values()))
-    # Convert rt (%) into decimal before yield curve
-    bond_yield = nelson_siegel(rt / 100.0)
-    anchors    = pd.DataFrame(
+    bond_yield = nelson_siegel(rt)
+
+    anchors = pd.DataFrame(
         index=["SPX", "Weighted EPS", "Weighted P/E", "Gold", "Oil", "10Y Yield"],
-        data={"Actual": [spx, eps, spx/eps, a_gold, a_oil, a_10y/100],
-              "Model": [fair_spx, weighted_eps, weighted_pe, gold_price, oil_price, bond_yield]}
+        data={
+            "Actual":    [spx, eps, spx/eps, a_gold, a_oil, a_10y/100],
+            "Model":     [fair_spx, weighted_eps, weighted_pe, gold_price, oil_price, bond_yield]
+        }
     )
     fmt_anchors = anchors.copy()
     for metric in fmt_anchors.index:
         for col in fmt_anchors.columns:
             val = anchors.loc[metric, col]
             if metric in ["SPX", "Weighted EPS", "Gold", "Oil"]:
-                fmt_anchors.loc[metric, col] = f'${val:,.0f}'
+                fmt_anchors.loc[metric, col] = f"${val:,.0f}"
             elif metric == "Weighted P/E":
-                fmt_anchors.loc[metric, col] = f'{val:.1f}'
+                fmt_anchors.loc[metric, col] = f"{val:.1f}"
             elif metric == "10Y Yield":
-                fmt_anchors.loc[metric, col] = f'{val:.1%
+                fmt_anchors.loc[metric, col] = f"{val:.1%}"
+    st.subheader("Valuation & Asset Price Anchors")
+    st.table(fmt_anchors)
+
+    # Portfolio Allocation & Simulation
+    dfp, alloc, equity_beta = portfolio_editor()
+    exp_eq = sum(probs[r] / 100 * rets[i] for i, r in enumerate(regimes)) * equity_beta
+    ret_asset = np.array([exp_eq,
+                          gold_price / a_gold - 1,
+                          oil_price  / a_oil  - 1,
+                          bond_yield,
+                          DEFAULT_CASH_YIELD])
+    exp_return = alloc @ ret_asset
+    st.subheader("Expected Portfolio Return")
+    st.metric("Expected Return", f"{exp_return:.2%}")
+
+    vols = np.array([0.15, 0.10, 0.12, 0.08, 0.00])
+    cov  = np.diag(vols) @ np.array([
+        [1,     avg_corr, 0,     0, 0],
+        [avg_corr, 1,     0,     0, 0],
+        [0,     0,     1,     0, 0],
+        [0,     0,     0,     1, 0],
+        [0,     0,     0,     0, 1]
+    ]) @ np.diag(vols)
+
+    sims = simulate(alloc, ret_asset, cov)
+    st.subheader("Portfolio MC Distribution")
+    st.line_chart(pd.Series(sims).rolling(50).mean())
+
+
+if __name__ == '__main__':
+    run()
