@@ -135,32 +135,24 @@ def step5_drivers(eps,spx,rt,m2,liq,fiscal,geo,regimes,probs):
     return values,rets,eps_list,pe_list,corr_vals
 
 # === Step 6: Valuation & Asset Price Anchors ===
-def step6_anchors_inputs():
-    st.sidebar.header("Anchor Drivers & Assumptions")
-    return (st.sidebar.number_input("VIX for Gold",16.0),
-            st.sidebar.number_input("Oil inv change (%)",0.0),
-            st.sidebar.slider("OPEC quota",-1.0,1.0,0.0),
-            st.sidebar.number_input("Global PMI",50.0))
+    # collect anchor metrics
+    metrics = ["SPX", "EPS", "P/E", "Gold", "Oil", "10Y"]
+    actual_vals = [spx, eps, spx/eps, a_gold, a_oil, a_10y/100]
+    model_vals  = [fair_spx, weighted_eps, weighted_pe, gold_price, oil_price, bond_yield]
+    fmt_anchors = pd.DataFrame({"Metric": metrics, "Actual": actual_vals, "Model": model_vals})
+    # format display
+    for idx, row in fmt_anchors.iterrows():
+        m = row["Metric"]
+        if m in ["SPX", "EPS", "Gold", "Oil"]:
+            fmt_anchors.at[idx, "Actual"] = f"${row['Actual']:,.0f}"
+            fmt_anchors.at[idx, "Model"]  = f"${row['Model']:,.0f}"
+        elif m == "P/E":
+            fmt_anchors.at[idx, "Actual"] = f"{row['Actual']:.1f}"
+            fmt_anchors.at[idx, "Model"]  = f"{row['Model']:.1f}"
+        elif m == "10Y":
+            fmt_anchors.at[idx, "Actual"] = f"{row['Actual']:.1%}"
+            fmt_anchors.at[idx, "Model"]  = f"{row['Model']:.1%}"
+    st.subheader("Valuation & Asset Price Anchors")
+    st.table(fmt_anchors.set_index("Metric"))
 
-# === Helpers ===
-def nelson_siegel(rt): return 1-((1-np.exp(-rt))/rt)+0.5*(((1-np.exp(-rt))/rt)-np.exp(-rt))
-
-def run():
-    eps,spx,a_gold,a_oil,a_10y,geo=step1_market()
-    liq,fiscal,geo_r,rt,m2=step2_backdrop()
-    regimes,probs=step3_regimes(liq,fiscal,geo_r)
-    df,alloc,beta=portfolio_editor()
-    vals,rets,epsl,pel,corrs=step5_drivers(eps,spx,rt,m2,liq,fiscal,geo_r,regimes,probs)
-    # regime table
-    dfv=pd.DataFrame({'Regime':regimes,'Fair SPX':vals,'Return%':[f"{x:.1%}" for x in rets],'P%':[f"{probs[r]:.1f}%" for r in regimes]})
-    st.write(dfv)
-    # anchors
-    vix,inv,opec,pmi=step6_anchors_inputs()
-    avg_corr=sum(probs[r]/100*corrs[r] for r in regimes)
-    gold_price=2000*(1-rt*0.1)+vix*10+sum(geo.values())*300-avg_corr*200
-    oil_price=80*(1+pmi/100-inv/100)+opec*80+sum(geo.values())*50
-    bond_y=nelson_siegel(rt)
-    anc=pd.DataFrame(index=["SPX","EPS","P/E","Gold","Oil","10Y"],data={"Actual":[f"${spx:,.0f}",f"${eps:,.0f}",f"{(spx/eps):.1f}",f"${a_gold:,.0f}",f"${a_oil:,.0f}",f"{a_10y:.1%}"],"Model":[f"${int(epsl[i]*pel[i]):,0f}" if i<1 else None for i in range(6)]})
-    st.subheader("Valuation Anchors")
-    st.table(anc)
-if __name__=='__main__': run()
+if __name__=='__main__': run() run()
