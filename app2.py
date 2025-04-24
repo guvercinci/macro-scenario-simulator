@@ -7,7 +7,7 @@ st.set_page_config(page_title="Macro Scenario Simulator", layout="wide")
 st.title("Macro Scenario Simulator")
 st.markdown(
     "This interactive tool helps you stress-test a portfolio across different economic regimes. "
-    "Use the sidebar to enter market prices, set the macro backdrop, "
+    "Use the sidebar titles to enter market prices, set the macro backdrop, "
     "adjust scenario drivers, and visualize fair-value estimates and risk distributions."
 )
 
@@ -19,13 +19,12 @@ DEFAULT_CASH_YIELD = 0.043     # assumed annual cash yield (4.3%)
 def step1_market():
     st.sidebar.header("Market Prices & Flashpoints")
     st.sidebar.markdown("*Enter asset prices and geo-event impacts.*")
-    # Updated default inputs as of April 24, 2025
-    eps   = st.sidebar.number_input("SPX trailing EPS", min_value=0.0, value=220.0)
-    spx   = st.sidebar.number_input("SPX index level", min_value=0.0, value=5280.0)
+    eps   = st.sidebar.number_input("SPX trailing EPS",     min_value=0.0, value=220.0)
+    spx   = st.sidebar.number_input("SPX index level",     min_value=0.0, value=5280.0)
     st.sidebar.markdown("**Current Asset Prices**")
-    a_gold= st.sidebar.number_input("Gold price ($)", min_value=0.0, value=3300.0)
-    a_oil = st.sidebar.number_input("Oil price ($)", min_value=0.0, value=65.0)
-    a_10y = st.sidebar.number_input("10Y yield (%)", min_value=0.0, value=4.3)
+    a_gold= st.sidebar.number_input("Gold price ($)",      min_value=0.0, value=3300.0)
+    a_oil = st.sidebar.number_input("Oil price ($)",       min_value=0.0, value=65.0)
+    a_10y = st.sidebar.number_input("10Y yield (%)",      min_value=0.0, value=4.3)
     st.sidebar.markdown("**Geo Flashpoints**")
     geo_events = {
         "Tariff shock": st.sidebar.slider("Impact: Tariff shock", -1.0, 1.0, -0.8),
@@ -115,7 +114,7 @@ def portfolio_editor():
     with col1:
         df=st.data_editor(df_init,use_container_width=True) if hasattr(st,'data_editor') else st.experimental_data_editor(df_init,use_container_width=True)
     with col2:
-        equity_beta=st.number_input("Equity Beta",0.0,1.0,1.0,0.1)
+        equity_beta=st.number_input("Equity Beta",min_value=0.0,value=1.0,step=0.1)
     if abs(df['Pct'].sum()-100)>0.1:
         st.error("Weights must sum to 100%.")
         st.stop()
@@ -124,26 +123,37 @@ def portfolio_editor():
 # === Step 5: Scenario Drivers & Valuation ===
 def step5_drivers(eps,spx,rt,m2,liq,fiscal,geo,regimes,probs):
     st.sidebar.header("Scenario Drivers & Correlations")
-    gdp_def={'Expansion':2.0,'Recession':-2.0,'Stagflation':-1.0,'Deflation':-3.0}
-    rate_def={'Expansion':1.0,'Recession':-3.0,'Stagflation':2.0,'Deflation':-4.0}
-    share_def={'Expansion':0.10,'Recession':-0.20,'Stagflation':-0.15,'Deflation':-0.25}
-    corr_def={'Expansion':0.0,'Recession':-0.5,'Stagflation':-0.7,'Deflation':-0.2}
-    values,rets,eps_list,pe_list,corrs=[],[],[],[],{}
+    gdp_def   = {'Expansion':2.0, 'Recession':-2.0, 'Stagflation':-1.0, 'Deflation':-3.0}
+    rate_def  = {'Expansion':1.0, 'Recession':-3.0, 'Stagflation':2.0,  'Deflation':-4.0}
+    # Remove EPS-reducing share change in expansion, and avoid boosting EPS in recession
+    share_def = {'Expansion':0.0, 'Recession':0.0, 'Stagflation':-0.15, 'Deflation':-0.25}
+    corr_def  = {'Expansion':0.0, 'Recession':-0.5, 'Stagflation':-0.7, 'Deflation':-0.2}
+    values, rets, eps_list, pe_list, corrs = [], [], [], [], {}
     for r in regimes:
-        with st.sidebar.expander(r,True):
-            g=st.number_input(f"GDP {r}%",gdp_def[r],key=f"gdp_{r}")
-            rc=st.number_input(f"Rate shock {r}%",rate_def[r],key=f"rs_{r}")
-            sc=st.number_input(f"Share change {r}%",share_def[r],key=f"sc_{r}")
-            corrs[r]=st.sidebar.slider(f"Eq-Gold corr {r}",-1.0,1.0,corr_def[r],key=f"corr_{r}")
-        eps_proj=eps*(1+g/100)*(1-m2*0.005-rc*0.01)-rc*0.1
-        eps_floor=eps*0.125
-        eps_f=max(eps_proj,eps_floor)*(1-sc)
-        pe_base=1/((rt/100)+0.04)
-        pe_f=min(40,max(8,pe_base))*(1+min(MAX_MACRO_PE_IMPACT,liq*0.25+fiscal*0.2-geo*0.3))
-        fv=eps_f*pe_f
-        values.append(fv); rets.append(fv/spx-1)
-        eps_list.append(eps_f); pe_list.append(pe_f)
-    return values,rets,eps_list,pe_list,corrs
+        with st.sidebar.expander(r, True):
+            g  = st.number_input(f"GDP {r}%", gdp_def[r], key=f"gdp_{r}")
+            rc = st.number_input(f"Rate shock {r}%", rate_def[r], key=f"rs_{r}")
+            sc = st.number_input(f"Share change {r}%", share_def[r], key=f"sc_{r}")
+            corrs[r] = st.sidebar.slider(f"Eq-Gold corr {r}", -1.0, 1.0, corr_def[r], key=f"corr_{r}")
+        # Separate rate hikes vs cuts
+        rate_hike = max(rc, 0)
+        rate_cut  = -min(rc, 0)
+        # EPS projection with no recessions boosting EPS
+        proj = eps * (1 + g/100)
+        proj *= (1 - m2 * 0.005 - rate_hike * 0.01)
+        proj -= rate_hike * 0.1
+        proj += rate_cut * 0.02  # small uplift for rate cuts
+        eps_floor = eps * 0.125
+        eps_f     = max(proj, eps_floor) * (1 - sc)
+        pe_base   = 1 / ((rt/100) + 0.04)
+        pe_f      = min(40, max(8, pe_base)) * (1 + min(MAX_MACRO_PE_IMPACT,
+                        liq * 0.25 + fiscal * 0.2 - geo * 0.3))
+        fv        = eps_f * pe_f
+        values.append(fv)
+        rets.append(fv/spx - 1)
+        eps_list.append(eps_f)
+        pe_list.append(pe_f)
+    return values, rets, eps_list, pe_list, corrs
 
 # === Step 6: Anchor Drivers & Assumptions ===
 def step6_anchors_inputs():
